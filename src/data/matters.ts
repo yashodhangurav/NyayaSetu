@@ -1,0 +1,88 @@
+import { Matter } from "@/types";
+
+export const matters: Matter[] = [
+  {
+    id: "matter-1",
+    slug: "maharera-delay-refund-interest",
+    result: "₹1.4 Cr",
+    resultUnit: "RERA Refund",
+    title: "Full refund with 10.75% SBI MCLR interest for 142 aggrieved home buyers",
+    summary: "Lead counsel before MahaRERA against a prominent Mumbai real estate developer for a 4-year project delay without occupancy certificate.",
+    whatHappened: "Secured a direct recovery order under Section 18 of RERA 2016 directing 100% principal reimbursement with compound interest within 60 days.",
+    leadPartner: "Adv. Rajeshwari Sen",
+    practice: "Civil & Property Law",
+    forum: "Maharashtra Real Estate Regulatory Authority (MahaRERA)",
+    year: "2025",
+    category: "Civil & Property"
+  },
+  {
+    id: "matter-2",
+    slug: "bnss-section-528-quashing-high-court",
+    result: "Quashed",
+    resultUnit: "With Costs",
+    title: "Complete quashing of malicious criminal FIR against startup directors under Section 528 BNSS",
+    summary: "Counsel to three technology founders facing an extortionate criminal complaint arising out of a commercial vendor dispute.",
+    whatHappened: "Delhi High Court ruled the dispute purely civil in nature, invoking inherent powers under Section 528 BNSS 2023 to quash the FIR with ₹1 Lakh costs on complainant.",
+    leadPartner: "Adv. Harshvardhan Kapoor",
+    practice: "Criminal Defense & Bail",
+    forum: "High Court of Delhi",
+    year: "2025",
+    category: "Criminal & Bail"
+  },
+  {
+    id: "matter-3",
+    slug: "ni-act-138-commercial-cheque-recovery",
+    result: "₹84 Lakhs",
+    resultUnit: "Recovery Decree",
+    title: "Summary recovery decree and 18% interest under Section 138 Negotiable Instruments Act",
+    summary: "Represented a precision manufacturing vendor in Bengaluru in recovering payment for 6 dishonoured commercial cheques against a corporate buyer.",
+    whatHappened: "Obtained criminal conviction and interim 20% compensation under Section 143A NI Act, compelling full principal settlement before trial.",
+    leadPartner: "Adv. Ananya Sundaram",
+    practice: "Cheque Bounce & Debt Recovery",
+    forum: "City Civil & Sessions Court, Bengaluru",
+    year: "2024",
+    category: "Commercial & Debt"
+  },
+  {
+    id: "matter-4",
+    slug: "section-27-non-compete-defense",
+    result: "Withdrawn",
+    resultUnit: "Notice Barred",
+    title: "Invalidation of 18-month non-compete covenant under Section 27 Indian Contract Act 1872",
+    summary: "Represented a senior VP of engineering against a multinational tech firm seeking an injunction to prevent him joining a competitor.",
+    whatHappened: "High Court established that post-employment non-compete covenants are void ab initio under Section 27, prompting the multinational to withdraw all claims.",
+    leadPartner: "Adv. Vikramaditya Deshmukh",
+    practice: "Startup & Corporate Law",
+    forum: "High Court of Judicature at Bombay",
+    year: "2024",
+    category: "Commercial & Debt"
+  },
+  {
+    id: "matter-5",
+    slug: "nclt-ibc-section-9-msme-insolvency",
+    result: "₹1.8 Cr",
+    resultUnit: "CIRP Settlement",
+    title: "Resolution of unpaid MSME operational debt under Section 9 of the Insolvency and Bankruptcy Code (IBC)",
+    summary: "Counsel to an automotive component supplier filing for Corporate Insolvency Resolution Process (CIRP) against a defaulting corporate debtor.",
+    whatHappened: "Prior to admission by NCLT, the corporate debtor remitted 100% of outstanding operational dues along with commercial interest.",
+    leadPartner: "Adv. Ananya Sundaram",
+    practice: "Cheque Bounce & Debt Recovery",
+    forum: "National Company Law Tribunal (NCLT), Bengaluru Bench",
+    year: "2024",
+    category: "Commercial & Debt"
+  },
+  {
+    id: "matter-6",
+    slug: "consumer-commission-medical-insurance-claim",
+    result: "₹45 Lakhs",
+    resultUnit: "NCDRC Award",
+    title: "Repudiation overturned with punitive damages against health insurer for wrongful denial",
+    summary: "Represented an elderly patient's family before the National Consumer Disputes Redressal Commission after an insurer denied critical illness coverage.",
+    whatHappened: "NCDRC held the rejection arbitrary and contrary to IRDAI guidelines, ordering full claim disbursement with ₹5 Lakhs mental agony compensation.",
+    leadPartner: "Adv. Priyadarshini Rao",
+    practice: "Civil & Property Law",
+    forum: "National Consumer Disputes Redressal Commission (NCDRC), New Delhi",
+    year: "2025",
+    category: "Civil & Property"
+  },
+];
