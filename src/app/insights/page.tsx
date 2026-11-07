@@ -6,10 +6,9 @@ import Link from "next/link";
 import { Container } from "@/components/layout/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
 import { articles } from "@/data/articles";
-import { Clock, ArrowRight, CheckCircle2, Mail, Search } from "lucide-react";
+import { Clock, ArrowRight, CheckCircle2, Search } from "lucide-react";
 
 export default function InsightsPage() {
   const [selectedCategory, setSelectedCategory] = React.useState("all");

@@ -7,7 +7,7 @@ import { Container } from "@/components/layout/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { firmTimeline, writtenCommitments, clientProfiles, proBonoDetails } from "@/data/firm";
-import { CheckCircle2, Clock, Calendar, ArrowRight, ShieldCheck, HeartHandshake, Phone } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function FirmPage() {

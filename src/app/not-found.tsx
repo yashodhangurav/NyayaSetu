@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/layout/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, ShieldAlert, FileText, Users, Scale, Search } from "lucide-react";
+import { ArrowLeft, ShieldAlert, FileText, Users, Scale } from "lucide-react";
 
 export default function NotFound() {
   const quickLinks = [

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { matters } from "@/data/matters";
-import { ChevronDown, ArrowRight, ShieldCheck, Scale, Phone, Search, X } from "lucide-react";
+import { ChevronDown, ArrowRight, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QuickConsultationModal } from "@/components/ui/quick-consultation-modal";
 

@@ -1,24 +1,16 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { Container } from "@/components/layout/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select } from "@/components/ui/input";
 import {
-  MapPin,
-  Phone,
-  Mail,
-  Clock,
   Train,
-  Car,
   CheckCircle2,
-  AlertCircle,
   ArrowRight,
   ArrowLeft,
   RotateCcw,
-  ShieldCheck,
   Building2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -116,13 +108,13 @@ export default function ContactPage() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(4, prev + 1) as any);
+      setCurrentStep((prev) => Math.min(4, prev + 1) as 1 | 2 | 3 | 4);
     }
   };
 
   const handleBack = () => {
     setErrors({});
-    setCurrentStep((prev) => Math.max(1, prev - 1) as any);
+    setCurrentStep((prev) => Math.max(1, prev - 1) as 1 | 2 | 3 | 4);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -410,7 +402,7 @@ export default function ContactPage() {
                                 <button
                                   key={item.id}
                                   type="button"
-                                  onClick={() => setFormData({ ...formData, urgency: item.id as any })}
+                                  onClick={() => setFormData({ ...formData, urgency: item.id as MultiStepFormData["urgency"] })}
                                   className={`p-2.5 text-xs text-center border transition-colors cursor-pointer ${
                                     formData.urgency === item.id
                                       ? "border-[#2a1c12] bg-[#2a1c12] text-[#fffaf2] font-semibold"
@@ -638,7 +630,7 @@ export default function ContactPage() {
                   {/* CTA 'L' Subway */}
                   <div className="space-y-1 pt-3 border-t border-[#e2d5c1]/60">
                     <div className="font-semibold text-[#2a1c12] uppercase font-mono tracking-wider">
-                      CTA 'L' Transit:
+                      CTA &apos;L&apos; Transit:
                     </div>
                     <p>
                       • <span className="font-medium text-[#2a1c12]">Quincy / Wells Station:</span> 1 block west (Brown, Orange, Pink, Purple Lines).

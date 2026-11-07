@@ -43,3 +43,7 @@ next-env.d.ts
 # markdown files
 *.md
 !README.md
+
+# blender backups
+*.blend1
+*.blend@

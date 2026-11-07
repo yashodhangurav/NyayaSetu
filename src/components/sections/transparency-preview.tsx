@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { Container } from "@/components/layout/container";
-import { ArrowRight, ChevronDown, Check } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 
 interface PartnerProfile {
   name: string;

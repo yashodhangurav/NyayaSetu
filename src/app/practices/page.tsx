@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { practices } from "@/data/practices";
 import { partners } from "@/data/lawyers";
-import { ArrowRight, CheckCircle2, Phone, Mail, Scale } from "lucide-react";
+import { Phone } from "lucide-react";
 import { QuickConsultationModal } from "@/components/ui/quick-consultation-modal";
 
 export default function PracticesPage() {

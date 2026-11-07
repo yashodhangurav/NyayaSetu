@@ -5,7 +5,7 @@ import { Container } from "@/components/layout/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Select } from "@/components/ui/input";
-import { CheckCircle2, ShieldCheck, Clock, FileText, ArrowRight, RotateCcw } from "lucide-react";
+import { CheckCircle2, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConflictCheckFormData, FormErrors } from "@/types";
 
@@ -299,7 +299,7 @@ export function ConflictIntakeSection() {
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => setFormData({ ...formData, urgency: item.id as any })}
+                          onClick={() => setFormData({ ...formData, urgency: item.id as ConflictCheckFormData["urgency"] })}
                           className={`p-2.5 text-xs text-center border transition-colors cursor-pointer ${
                             formData.urgency === item.id
                               ? "border-[#2a1c12] bg-[#2a1c12] text-[#fffaf2] font-medium"

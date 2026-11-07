@@ -4,8 +4,7 @@ import * as React from "react";
 import { Modal } from "./modal";
 import { Button } from "./button";
 import { Input, Textarea, Select } from "./input";
-import { Badge } from "./badge";
-import { CheckCircle2, Clock, ShieldCheck, AlertCircle, RotateCcw } from "lucide-react";
+import { CheckCircle2, RotateCcw } from "lucide-react";
 
 interface QuickConsultationModalProps {
   isOpen: boolean;
@@ -25,6 +24,7 @@ export function QuickConsultationModal({
   const [phone, setPhone] = React.useState("");
   const [company, setCompany] = React.useState("");
   const [practice, setPractice] = React.useState(defaultPractice);
+  const [prevDefaultPractice, setPrevDefaultPractice] = React.useState(defaultPractice);
   const [adverseParty, setAdverseParty] = React.useState("");
   const [summary, setSummary] = React.useState("");
   const [acknowledged, setAcknowledged] = React.useState(false);
@@ -34,9 +34,10 @@ export function QuickConsultationModal({
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   const [caseReference, setCaseReference] = React.useState("");
 
-  React.useEffect(() => {
-    if (defaultPractice) setPractice(defaultPractice);
-  }, [defaultPractice]);
+  if (defaultPractice !== prevDefaultPractice) {
+    setPrevDefaultPractice(defaultPractice);
+    setPractice(defaultPractice);
+  }
 
   const validate = () => {
     const newErrors: Record<string, string> = {};

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { articles } from "@/data/articles";
 import { partners } from "@/data/lawyers";
-import { Clock, ArrowRight, ArrowLeft, Phone, Mail, CheckCircle2, ChevronRight, Share2 } from "lucide-react";
+import { Clock, ArrowRight, ArrowLeft, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 
 type Props = {

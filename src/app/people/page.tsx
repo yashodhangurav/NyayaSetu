@@ -7,8 +7,7 @@ import { Container } from "@/components/layout/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { partners, teamRoster } from "@/data/lawyers";
-import { Phone, Mail, Award, GraduationCap, ArrowRight, ShieldCheck, Check, Search, X, FileCheck, Copy } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Phone, GraduationCap, ShieldCheck, Check, Search, X, Copy } from "lucide-react";
 import { QuickConsultationModal } from "@/components/ui/quick-consultation-modal";
 
 export default function PeoplePage() {
