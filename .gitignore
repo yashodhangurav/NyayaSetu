@@ -44,6 +44,8 @@ next-env.d.ts
 *.md
 !README.md
 
-# blender backups
+# blender backups and checkpoints
 *.blend1
 *.blend@
+LadyJustice_checkpoint_*.blend
+LadyJustice_pre_upgrade.blend
