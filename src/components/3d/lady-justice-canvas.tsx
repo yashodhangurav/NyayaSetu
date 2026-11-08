@@ -73,7 +73,7 @@ function LadyJusticeModel({
   const idlePhase = useRef(0);
 
   // Front-facing angle turned towards viewer
-  const BASE_ROTATION_Y = -0.1;
+  const BASE_ROTATION_Y = -0.50;
 
   // Enhance bronze materials, configure shadows, and register cleanup
   useEffect(() => {
@@ -129,6 +129,7 @@ function LadyJusticeModel({
     };
   }, [scene, onLoaded]);
 
+
   // Smooth continuous rotation & responsive interactive tilt
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -138,19 +139,19 @@ function LadyJusticeModel({
 
     if (!isInteracting) {
       // Subtle majestic living breathing motion: +- 3.5 degrees keeping face strictly front-facing
-      idlePhase.current += dt * 0.35;
-      const idleY = BASE_ROTATION_Y + Math.sin(idlePhase.current) * 0.06;
-      const idleX = Math.cos(idlePhase.current * 0.7) * 0.02;
+      idlePhase.current += dt * 0.80;
+      const idleY = BASE_ROTATION_Y + Math.sin(idlePhase.current) * 0.1;
+      const idleX = Math.cos(idlePhase.current * 0.7) * 0.025;
 
       groupRef.current.rotation.y = THREE.MathUtils.lerp(
         groupRef.current.rotation.y,
         idleY,
-        dt * 3.2
+        dt * 5.0
       );
       groupRef.current.rotation.x = THREE.MathUtils.lerp(
         groupRef.current.rotation.x,
         idleX,
-        dt * 3.2
+        dt * 5.0
       );
     } else {
       // Smoothly track user pointer / drag interaction

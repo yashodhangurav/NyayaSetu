@@ -182,17 +182,25 @@ export function HeroSection() {
                   strokeWidth="1"
                   opacity="0.38"
                 />
-                <circle
-                  cx="200"
-                  cy="200"
-                  r="142"
-                  fill="none"
-                  stroke="rgb(154, 106, 53)"
-                  strokeWidth="1"
-                  strokeDasharray="2 6"
-                  opacity="0.45"
-                />
-                <g style={{ transformOrigin: "200px 200px" }}>
+                <motion.g
+                  style={{ transformOrigin: "200px 200px" }}
+                  animate={{ rotate: 360 }}
+                  transition={{
+                    duration: 60,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                >
+                  <circle
+                    cx="200"
+                    cy="200"
+                    r="142"
+                    fill="none"
+                    stroke="rgb(154, 106, 53)"
+                    strokeWidth="1"
+                    strokeDasharray="2 6"
+                    opacity="0.45"
+                  />
                   <text
                     style={{
                       fontFamily: "General Sans, sans-serif",
@@ -207,7 +215,7 @@ export function HeroSection() {
                       NYAYASETU · AI LEGAL ADVISOR & ADVOCATE NETWORK · BHARAT · ESTABLISHED 2026 ·
                     </textPath>
                   </text>
-                </g>
+                </motion.g>
               </svg>
             </div>
 
