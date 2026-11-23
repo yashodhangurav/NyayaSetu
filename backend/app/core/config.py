@@ -1,5 +1,6 @@
 """Centralized Application Configuration Module."""
 
+from pathlib import Path
 from typing import List, Optional, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -9,7 +10,10 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables and .env file."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Resolve relative to this file, not the current working directory, so
+        # `python backend/run.py` from the repo root loads the same .env as
+        # `python run.py` from backend/ on both macOS and Windows.
+        env_file=str(Path(__file__).resolve().parents[2] / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -86,7 +90,9 @@ class Settings(BaseSettings):
     SUPABASE_PUBLISHABLE_KEY: str = "sb_publishable_AghcSMNgQd1JlABKevbIGA_wROA32fu"
 
     # AI & Legal Embeddings Configuration
-    AI_PROVIDER: str = "mock"  # "gemini" or "mock"
+    AI_PROVIDER: str = "mock"  # "groq", "gemini" or "mock"
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_LLM_MODEL: str = "qwen/qwen3.8-27b"
     GEMINI_API_KEY: str = ""
     GEMINI_LLM_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
@@ -205,28 +211,25 @@ class Settings(BaseSettings):
 
 
 def validate_ai_configuration(settings_obj: Optional[Settings] = None) -> None:
-    """Validate AI provider configuration for current environment.
-
-    Enforces strict production safety:
-    1. Production mode MUST NOT silently use mock AI providers.
-    2. In production, AI_PROVIDER must be 'gemini'.
-    3. In production, GEMINI_API_KEY must be provided and non-empty.
-    4. Required SDK ('google-genai') must be installed.
-    5. In development, explicit mock provider is allowed and handled gracefully without crashes.
-    """
+    """Validate the selected AI provider at startup."""
     cfg = settings_obj or settings
-    provider = cfg.AI_PROVIDER.lower().strip() if cfg.AI_PROVIDER else "mock"
+    provider = (cfg.AI_PROVIDER or "mock").lower().strip()
+
+    if provider == "groq":
+        if not (cfg.GROQ_API_KEY or "").strip() or not cfg.GROQ_LLM_MODEL.strip():
+            raise RuntimeError("AI_PROVIDER=groq requires GROQ_API_KEY and GROQ_LLM_MODEL.")
+        return
 
     if cfg.is_production:
         if provider == "mock":
             raise RuntimeError(
                 "Production startup failed: AI_PROVIDER cannot be 'mock' in production. "
-                "Set AI_PROVIDER='gemini' and configure a valid GEMINI_API_KEY."
+                "Configure AI_PROVIDER='groq' or AI_PROVIDER='gemini' with its API key."
             )
         if provider != "gemini":
             raise ValueError(
                 f"Production startup failed: Unsupported AI_PROVIDER '{cfg.AI_PROVIDER}'. "
-                f"Supported production provider is 'gemini'."
+                f"Supported production providers are 'groq' and 'gemini'."
             )
         if not cfg.GEMINI_API_KEY or not cfg.GEMINI_API_KEY.strip():
             raise RuntimeError(

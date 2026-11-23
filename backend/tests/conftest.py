@@ -1,6 +1,7 @@
 """Pytest shared test fixtures with isolated in-memory test database."""
 
 import os
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -9,10 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["DEBUG"] = "true"
 os.environ["SECRET_KEY"] = "test-secret-key-32-characters-long-min-jwt-secret-testing"
+os.environ["AI_PROVIDER"] = "mock"
 
 from app.core.database import get_db
 from app.core.models import Base
 from app.main import app
+from app.modules.legal_assistant.embedding_provider import reset_embedding_provider
 
 # Isolated SQLite in-memory test database engine
 test_engine = create_async_engine(
@@ -27,6 +30,13 @@ TestingAsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+
+@pytest.fixture
+def isolated_embedding_provider():
+    reset_embedding_provider()
+    yield
+    reset_embedding_provider()
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)

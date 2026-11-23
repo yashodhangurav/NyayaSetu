@@ -1,20 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ArrowRight, Check, FileText, Share2, BookmarkCheck, Shield, X } from "lucide-react";
+import React, { useState } from "react";
+import { FileText, ArrowRight, Check, X, Shield, BookmarkCheck, Share2 } from "lucide-react";
 import { Button } from "@/components/dashboard/ui";
 import type { CaseBriefData } from "@/services/dashboard/chat-assistant";
-import { DefinitionList } from "./primitives/DefinitionList";
-import { BriefCardSkeleton } from "./primitives/Skeletons";
-import { cn } from "@/lib/utils";
-import styles from "../chat.module.css";
 
 interface CaseBriefFlowProps {
   onClose: () => void;
   onSaveToCases: (brief: CaseBriefData) => void;
   onShareWithAdvocate: (brief: CaseBriefData) => void;
-  /** Reserved for a real brief-generation fetch; never simulated here. */
-  loading?: boolean;
 }
 
 const QUESTIONS = [
@@ -75,14 +69,10 @@ const QUESTIONS = [
   },
 ];
 
-const closeButton =
-  "grid size-10 shrink-0 place-items-center rounded-[2px] text-[#85725f] transition-colors hover:bg-[#ebe1d1]/60 hover:text-[#2a1c12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9a6a35] active:bg-[#e2d5c1] sm:size-8";
-
 export function CaseBriefFlow({
   onClose,
   onSaveToCases,
   onShareWithAdvocate,
-  loading = false,
 }: CaseBriefFlowProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({
@@ -98,37 +88,29 @@ export function CaseBriefFlow({
 
   const stepDef = QUESTIONS[currentStep];
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      if (showConsentModal) setShowConsentModal(false);
-      else onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showConsentModal, onClose]);
-
   const handleSelectChip = (chip: string) => {
     const key = stepDef.key;
-    setAnswers({ ...answers, [key]: chip });
+    const nextAnswers = { ...answers, [key]: chip };
+    setAnswers(nextAnswers);
     setCustomInput("");
 
     if (currentStep < QUESTIONS.length - 1) {
-      setCurrentStep((step) => step + 1);
+      setCurrentStep((s) => s + 1);
     } else {
       setIsCompleted(true);
     }
   };
 
-  const handleCustomSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!customInput.trim()) return;
     const key = stepDef.key;
-    setAnswers({ ...answers, [key]: customInput.trim() });
+    const nextAnswers = { ...answers, [key]: customInput.trim() };
+    setAnswers(nextAnswers);
     setCustomInput("");
 
     if (currentStep < QUESTIONS.length - 1) {
-      setCurrentStep((step) => step + 1);
+      setCurrentStep((s) => s + 1);
     } else {
       setIsCompleted(true);
     }
@@ -150,109 +132,143 @@ export function CaseBriefFlow({
     deadline: "Notice reply due within 15 days of formal demand receipt",
   };
 
-  if (loading) return <BriefCardSkeleton />;
-
   if (isCompleted) {
     return (
-      <div className={cn(styles.fadeIn, "mt-4 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-5 shadow-[0_1px_2px_rgba(42,28,18,0.04)]")}>
-        <div className="flex items-start justify-between gap-3 border-b border-[#e2d5c1]/70 pb-3">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <span className="grid size-7 shrink-0 place-items-center rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/50 text-[#9a6a35]">
+      <div className="mt-4 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-5 shadow-xs animate-in-up">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#e2d5c1]/70 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/50 text-[#9a6a35]">
               <FileText className="size-4" aria-hidden="true" />
             </span>
-            <div className="min-w-0">
-              <h3 className="font-serif text-[17px] font-normal leading-snug text-[#2a1c12]">
+            <div>
+              <h3 className="font-serif text-[17px] font-normal text-[#2a1c12] leading-none">
                 Formal Case Matter Brief
               </h3>
-              <p className="mt-1 break-words text-[11px] leading-relaxed text-[#85725f]">
+              <p className="mt-1 text-[11px] text-[#85725f]">
                 Generated from citizen factual intake · Belagavi District Court Jurisdiction
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close case brief" className={closeButton}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close Case Brief"
+            className="rounded-[2px] p-1 text-[#85725f] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12] transition-colors"
+          >
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="mt-4">
-          <DefinitionList
-            items={[
-              { label: "Core facts", value: briefData.facts },
-              { label: "Timeline & limitation", value: briefData.timeline },
-              { label: "Deadline", value: briefData.deadline, mono: true, important: true },
-              { label: "Parties involved", value: briefData.parties },
-              { label: "Probable forum", value: briefData.probableForum },
-            ]}
-          />
+        {/* Structured Grid */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+          <div className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/25 p-3 space-y-1">
+            <span className="text-[10.5px] font-sans uppercase tracking-[0.1em] font-semibold text-[#85725f]">
+              Core Facts
+            </span>
+            <p className="text-[#2a1c12] leading-relaxed font-medium">{briefData.facts}</p>
+          </div>
+
+          <div className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/25 p-3 space-y-1">
+            <span className="text-[10.5px] font-sans uppercase tracking-[0.1em] font-semibold text-[#85725f]">
+              Timeline & Limitation
+            </span>
+            <p className="text-[#2a1c12] leading-relaxed font-medium">{briefData.timeline}</p>
+            <p className="text-[11px] font-mono text-[#b54708] pt-1">
+              Limitation deadline: {briefData.deadline}
+            </p>
+          </div>
+
+          <div className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/25 p-3 space-y-1">
+            <span className="text-[10.5px] font-sans uppercase tracking-[0.1em] font-semibold text-[#85725f]">
+              Parties Involved
+            </span>
+            <p className="text-[#2a1c12] leading-relaxed font-medium">{briefData.parties}</p>
+          </div>
+
+          <div className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/25 p-3 space-y-1">
+            <span className="text-[10.5px] font-sans uppercase tracking-[0.1em] font-semibold text-[#85725f]">
+              Probable Court Forum
+            </span>
+            <p className="text-[#2a1c12] leading-relaxed font-medium">{briefData.probableForum}</p>
+          </div>
         </div>
 
-        <div className="mt-3 border-t border-[#e2d5c1]/70 pt-3">
-          <DefinitionList
-            items={[
-              { label: "Preserved documents", value: briefData.documents.join("; ") },
-              {
-                label: "Statutory provisions",
-                value: (
-                  <span className="flex flex-wrap gap-1.5">
-                    {briefData.relevantSections.map((section) => (
-                      <span
-                        key={section}
-                        className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] px-2 py-0.5 font-mono text-[11px] text-[#2a1c12]"
-                      >
-                        {section}
-                      </span>
-                    ))}
-                  </span>
-                ),
-              },
-            ]}
-          />
+        {/* Documents & Sections */}
+        <div className="mt-3.5 space-y-2 rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/20 p-3 text-xs">
+          <div>
+            <span className="text-[10.5px] font-sans uppercase tracking-[0.1em] font-semibold text-[#85725f]">
+              Preserved Evidentiary Documents
+            </span>
+            <p className="text-[#2a1c12] leading-relaxed mt-0.5">
+              {briefData.documents.join("; ")}
+            </p>
+          </div>
+          <div className="pt-1.5 border-t border-[#e2d5c1]/60">
+            <span className="text-[10.5px] font-sans uppercase tracking-[0.1em] font-semibold text-[#85725f]">
+              Applicable Statutory Provisions
+            </span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {briefData.relevantSections.map((sec) => (
+                <span
+                  key={sec}
+                  className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] px-2 py-0.5 font-mono text-[11px] text-[#2a1c12]"
+                >
+                  {sec}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#e2d5c1]/70 pt-3">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Action Buttons */}
+        <div className="mt-4 pt-3 border-t border-[#e2d5c1]/70 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="primary"
               onClick={() => setShowConsentModal(true)}
-              className="min-h-10 text-xs sm:min-h-9"
+              className="text-xs"
             >
-              <Share2 className="mr-1 size-3.5" aria-hidden="true" />
-              Share with advocate
+              <Share2 className="size-3.5 mr-1" aria-hidden="true" />
+              Share with advocate (asks consent)
             </Button>
             <Button
               size="sm"
               variant="secondary"
               onClick={() => onSaveToCases(briefData)}
-              className="min-h-10 text-xs sm:min-h-9"
+              className="text-xs"
             >
-              <BookmarkCheck className="mr-1 size-3.5 text-[#9a6a35]" aria-hidden="true" />
+              <BookmarkCheck className="size-3.5 mr-1 text-[#9a6a35]" aria-hidden="true" />
               Save to My Cases
             </Button>
           </div>
-          <span className="flex items-center gap-1 text-[11px] text-[#85725f]">
-            <Shield className="size-3 text-[#2e7d32]" aria-hidden="true" />
-            DPDP Act, 2023 encrypted dossier
+          <span className="text-[11px] text-[#85725f] flex items-center gap-1">
+            <Shield className="size-3 text-[#2e7d32]" />
+            DPDP Act, 2023 Encrypted Dossier
           </span>
         </div>
 
+        {/* Consent Modal */}
         {showConsentModal && (
           <div className="fixed inset-0 z-60 grid place-items-center bg-[#24180f]/60 p-4 backdrop-blur-xs animate-fade">
-            <div className="w-full max-w-md space-y-3.5 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-5 shadow-pop animate-in-up">
+            <div className="w-full max-w-md rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-5 shadow-pop animate-in-up space-y-3.5">
               <h4 className="font-serif text-[18px] font-normal text-[#2a1c12]">
-                Statutory consent required
+                Statutory Consent Required
               </h4>
-              <p className="text-xs leading-relaxed text-[#5b4a3b]">
-                Under the Digital Personal Data Protection Act, 2023 (DPDP) and Bar Council of India
-                standards, your case brief will only be transmitted to verified advocates you
-                specifically authorise.
+              <p className="text-xs text-[#5b4a3b] leading-relaxed">
+                Under the Digital Personal Data Protection Act, 2023 (DPDP) and Bar Council of India standards, your case brief will only be transmitted to verified advocates you specifically authorize.
               </p>
-              <div className="space-y-1 rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/30 p-3 text-[11.5px] leading-relaxed text-[#2a1c12]">
-                <p>· Scope: transmit case brief to an empanelled advocate for preliminary evaluation.</p>
-                <p>· Retention: advice-only privilege; revocable anytime in privacy settings.</p>
+              <div className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/30 p-3 text-[11.5px] text-[#2a1c12] space-y-1">
+                <p className="font-medium">• Scope: Transmit Case Brief to empanelled advocate for preliminary evaluation.</p>
+                <p className="font-medium">• Retention: Advise-only privilege; revocable anytime in privacy settings.</p>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button size="sm" variant="ghost" onClick={() => setShowConsentModal(false)} className="min-h-10 sm:min-h-9">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowConsentModal(false)}
+                >
                   Cancel
                 </Button>
                 <Button
@@ -262,10 +278,9 @@ export function CaseBriefFlow({
                     setShowConsentModal(false);
                     onShareWithAdvocate(briefData);
                   }}
-                  className="min-h-10 sm:min-h-9"
                 >
-                  <Check className="mr-1 size-3.5" aria-hidden="true" />
-                  Grant consent & transmit
+                  <Check className="size-3.5 mr-1" />
+                  Grant Consent & Transmit
                 </Button>
               </div>
             </div>
@@ -276,33 +291,35 @@ export function CaseBriefFlow({
   }
 
   return (
-    <div className={cn(styles.fadeIn, "mt-4 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-4.5 shadow-[0_1px_2px_rgba(42,28,18,0.04)] sm:p-5")}>
-      <div className="flex items-start justify-between gap-3 border-b border-[#e2d5c1]/70 pb-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#9a6a35]">
+    <div className="mt-4 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-4.5 sm:p-5 shadow-xs animate-in-up">
+      {/* Questionnaire Header */}
+      <div className="flex items-center justify-between border-b border-[#e2d5c1]/70 pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-sans uppercase tracking-[0.1em] font-semibold text-[#9a6a35]">
               Question {currentStep + 1} of 5
             </span>
-            <span className="text-[11px] text-[#85725f]">· Case brief questionnaire</span>
+            <span className="text-[11px] text-[#85725f]">· Case Brief Questionnaire</span>
           </div>
-          <h3 className="mt-0.5 font-serif text-[17px] font-normal leading-snug text-[#2a1c12]">
+          <h3 className="font-serif text-[17px] font-normal text-[#2a1c12] mt-0.5">
             {stepDef.question}
           </h3>
-          <p className="mt-0.5 text-[11.5px] leading-relaxed text-[#5b4a3b]">{stepDef.sub}</p>
+          <p className="text-[11.5px] text-[#5b4a3b] mt-0.5">{stepDef.sub}</p>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Cancel case brief questionnaire"
-          className={closeButton}
+          className="rounded-[2px] p-1 text-[#85725f] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12] transition-colors"
         >
           <X className="size-4" aria-hidden="true" />
         </button>
       </div>
 
+      {/* Quick Reply Chips */}
       <div className="mt-3.5 space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#85725f]">
-          Quick responses (select one to proceed)
+        <p className="text-[11px] font-sans uppercase tracking-[0.08em] font-medium text-[#85725f]">
+          Quick responses (select one to proceed):
         </p>
         <div className="flex flex-wrap gap-2">
           {stepDef.chips.map((chip) => (
@@ -310,7 +327,7 @@ export function CaseBriefFlow({
               key={chip}
               type="button"
               onClick={() => handleSelectChip(chip)}
-              className="min-h-10 rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/35 px-3 py-1.5 text-left text-xs text-[#2a1c12] transition-colors hover:border-[#9a6a35] hover:bg-[#ebe1d1]/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9a6a35] active:bg-[#e2d5c1] sm:min-h-8"
+              className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/35 px-3 py-1.5 text-xs text-[#2a1c12] hover:border-[#9a6a35] hover:bg-[#ebe1d1]/70 transition-colors text-left cursor-pointer"
             >
               {chip}
             </button>
@@ -318,23 +335,24 @@ export function CaseBriefFlow({
         </div>
       </div>
 
-      <form onSubmit={handleCustomSubmit} className="mt-3.5 border-t border-[#e2d5c1]/60 pt-3">
+      {/* Free Text Input */}
+      <form onSubmit={handleCustomSubmit} className="mt-3.5 pt-3 border-t border-[#e2d5c1]/60">
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={customInput}
-            onChange={(event) => setCustomInput(event.target.value)}
+            onChange={(e) => setCustomInput(e.target.value)}
             placeholder="Or type custom details here..."
-            className="h-10 min-w-0 flex-1 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] px-3 text-xs text-[#2a1c12] placeholder:text-[#85725f]/60 focus:border-[#9a6a35] focus:outline-none focus:ring-1 focus:ring-[#9a6a35] sm:h-9"
+            className="flex-1 h-9 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] px-3 text-xs text-[#2a1c12] placeholder:text-[#85725f]/60 focus:outline-none focus:border-[#9a6a35] focus:ring-1 focus:ring-[#9a6a35]"
           />
           <Button
             type="submit"
             size="sm"
             variant="primary"
             disabled={!customInput.trim()}
-            className="min-h-10 px-3 text-xs sm:min-h-9"
+            className="h-9 px-3 text-xs"
           >
-            Next <ArrowRight className="ml-1 size-3.5" aria-hidden="true" />
+            Next <ArrowRight className="size-3.5 ml-1" />
           </Button>
         </div>
       </form>

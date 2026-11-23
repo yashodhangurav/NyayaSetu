@@ -1,5 +1,6 @@
 """Database Configuration, Declarative Base, and Session Management using SQLAlchemy 2 & Psycopg 3."""
 
+import asyncio
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -118,8 +119,8 @@ async def check_db_health() -> Dict[str, Any]:
 
     try:
         async with AsyncSessionLocal() as session:
-            # 1. Basic ping
-            await session.execute(text("SELECT 1"))
+            # 1. Basic ping with timeout
+            await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=1.5)
             latency = (time.perf_counter() - start_time) * 1000
             health_status["status"] = "connected"
             health_status["latency_ms"] = round(latency, 2)
@@ -129,13 +130,16 @@ async def check_db_health() -> Dict[str, Any]:
                 "SELECT extname, extversion FROM pg_extension "
                 "WHERE extname IN ('postgis', 'vector', 'uuid-ossp');"
             )
-            result = await session.execute(ext_query)
+            result = await asyncio.wait_for(session.execute(ext_query), timeout=1.5)
             ext_map = {row[0]: row[1] for row in result.fetchall()}
             health_status["extensions"] = {
                 "postgis": ext_map.get("postgis", "not_installed"),
                 "vector": ext_map.get("vector", "not_installed"),
                 "uuid-ossp": ext_map.get("uuid-ossp", "not_installed"),
             }
+    except (asyncio.TimeoutError, TimeoutError):
+        health_status["status"] = "unreachable"
+        health_status["error"] = "Database connection timed out"
     except OperationalError as op_err:
         health_status["status"] = "unreachable"
         health_status["error"] = "Connection refused or host unreachable"

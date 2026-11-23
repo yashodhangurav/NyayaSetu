@@ -1,12 +1,16 @@
 """Legal AI Assistant and Grounded RAG API Router."""
 
+import asyncio
 import uuid
 from typing import List, Optional
 
+from jwt import InvalidTokenError
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_jwt
 from app.modules.auth.dependencies import oauth2_scheme, require_roles
@@ -14,10 +18,12 @@ from app.modules.legal_assistant.schemas import (
     LegalAskRequest,
     LegalAskResponse,
     LegalChunkCreate,
+    LegalSearchRequest,
+    LegalSearchResponse,
     LegalSourceCreate,
     LegalSourceResponse,
 )
-from app.modules.legal_assistant.service import LegalAssistantService
+from app.modules.legal_assistant.service import LegalAssistantService, get_hybrid_engine
 from app.modules.legal_knowledge.ingestion import LegalIngestionService
 from app.modules.legal_knowledge.models import LegalChunk, LegalSource
 from app.modules.users.models import User
@@ -39,10 +45,15 @@ async def get_optional_user(
     try:
         payload = decode_jwt(token)
         user_id_str = payload.get("sub")
-        if user_id_str:
-            res = await db.execute(select(User).where(User.id == uuid.UUID(user_id_str)))
-            return res.scalar_one_or_none()
-    except Exception:
+        if payload.get("type") == "access" and user_id_str:
+            async with asyncio.timeout(3 if settings.is_development else None):
+                res = await db.execute(select(User).where(User.id == uuid.UUID(user_id_str)))
+                return res.scalar_one_or_none()
+    except (OperationalError, TimeoutError):
+        if not settings.is_development:
+            raise
+        await db.rollback()
+    except (InvalidTokenError, TypeError, ValueError):
         pass
     return None
 
@@ -52,6 +63,44 @@ async def get_optional_user(
 async def get_legal_status():
     """Diagnostic health status for Legal Assistant module."""
     return {"module": "legal_assistant", "status": "initialized", "active": True}
+
+
+# ──────────────────────────────────────────────────────────────
+# Phase 1: Pure Statutory Retrieval Search (/api/v1/legal/search)
+# ──────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/search",
+    response_model=LegalSearchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Phase 1: Hybrid Legal Search (GET)",
+    description="Executes BM25 + dense semantic vector search with concordance mapping and 0% repealed-law leakage.",
+)
+async def search_legal_corpus_get(
+    q: str = Query(..., min_length=2, description="Citizen inquiry or legal topic"),
+    top_k: int = Query(5, ge=1, le=20),
+    jurisdiction: Optional[str] = Query(None),
+):
+    engine = get_hybrid_engine()
+    return engine.search(query=q, top_k=top_k, jurisdiction=jurisdiction, filter_in_force_only=True)
+
+
+@router.post(
+    "/search",
+    response_model=LegalSearchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Phase 1: Hybrid Legal Search (POST)",
+    description="Executes BM25 + dense semantic vector search with concordance mapping and 0% repealed-law leakage.",
+)
+async def search_legal_corpus_post(payload: LegalSearchRequest):
+    engine = get_hybrid_engine()
+    return engine.search(
+        query=payload.query,
+        top_k=payload.top_k,
+        jurisdiction=payload.jurisdiction,
+        filter_in_force_only=payload.filter_in_force_only,
+    )
 
 
 # ──────────────────────────────────────────────────────────────

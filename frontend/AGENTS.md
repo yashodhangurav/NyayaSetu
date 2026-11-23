@@ -17,8 +17,7 @@ repository-level [`../AGENTS.md`](../AGENTS.md) and
 ### What this app is
 
 A public India-focused legal platform: marketing pages, an advocate directory, a
-representative matter ledger, legal guides, and intake forms. Content is still
-static in `src/data/`; form submissions are simulated.
+representative matter ledger, legal guides, and intake forms. The dashboard combines live API clients with development fixtures in `src/data/`.
 
 ### Commands
 
@@ -41,7 +40,7 @@ npm run start
   effects, or browser APIs.
 - Keep the `dynamic(() => import(...), { ssr: false })` boundary around the 3D
   scene. Do not make the whole hero client-side just for Three.js.
-- Static data is the current source of truth. If you migrate a page to the API,
+- For pages that still use static data, if you migrate a page to the API,
   keep the static array until the API path is verified, then remove it and all
   its imports.
 - Add remote image hosts to `next.config.ts` `images.remotePatterns` rather than
@@ -54,8 +53,7 @@ npm run start
 ### Content and compliance
 
 - Canonical identity: NyayaSetu (न्यायसेतु), India, established 2026.
-- Do not add or extend Chicago/Illinois "Ellery Kowal LLP" copy. It is legacy
-  template content tracked in `../docs/CONTENT.md`.
+- Do not add or extend Chicago/Illinois "Ellery Kowal LLP" copy.
 - Never remove the "not legal advice", "no advocate-client relationship", or BCI
   non-solicitation notices.
 - Do not invent advocates, bar enrollments, case results, offices, phone
@@ -67,8 +65,8 @@ npm run start
 ### API integration
 
 - Contract: [`../docs/API.md`](../docs/API.md).
-- Add `NEXT_PUBLIC_API_URL` (or a server-only equivalent) before wiring calls.
-- Map form fields exactly as described in `../docs/FRONTEND.md`; normalize
+- Use the configured server-side `BACKEND_API_URL` rewrite and the shared API client.
+- Preserve established form-field mappings; normalize
   `upcoming-30d` → `standard-30d` and `none-yet` → `exploratory`.
 - Treat `202` from newsletter as success and `201` from intake as created.
 - Surface `error.details` for validation failures and `requestId` for support.
@@ -84,4 +82,3 @@ npm run build
 
 There is no test suite yet. If you add one, document the command here and in
 `../docs/DEVELOPMENT.md`.
-

@@ -9,7 +9,6 @@ import {
   IndianRupee,
   Languages,
   MapPin,
-  Sparkles,
   Video,
 } from "lucide-react";
 import {
@@ -98,12 +97,11 @@ export default function AdvocatesPage() {
   return (
     <div className="space-y-6 animate-fade">
       <PageHeader
-        eyebrow="Roll Advocate Matching Engine"
-        title="Discover Verified State Bar Council Advocates"
-        subtitle="Ranked strictly on statutory forum compatibility, language preference, verified court experience, and budget ceiling — zero paid placement."
+        title="Find an Advocate"
+        subtitle="Matched by practice area, court, language, and budget. No paid placements."
         actions={
           <Badge tone="mint">
-            <Sparkles className="size-3 mr-1" aria-hidden /> {matches.length} Verified Matches
+            {matches.length} matches
           </Badge>
         }
       />
@@ -133,9 +131,7 @@ export default function AdvocatesPage() {
           <h2 className="flex items-center gap-2 font-serif text-[18px] sm:text-[20px] font-normal text-[#2a1c12]">
             <Filter className="size-4 text-[#9a6a35]" aria-hidden /> Matching Filters
           </h2>
-          <span className="text-[11px] font-sans uppercase tracking-[0.08em] text-[#85725f]">
-            BCI Rule 36 Non-Advertising Roll
-          </span>
+
         </div>
         <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-5 text-xs">
           <Field label="Practice Area" htmlFor="area">
@@ -166,9 +162,9 @@ export default function AdvocatesPage() {
           <Field label="Consultation Format" htmlFor="mode">
             <Select id="mode" value={draft.mode} onChange={(e) => setDraft({ ...draft, mode: e.target.value as MatchPreferences["mode"] })}>
               <option value="any">Any Format</option>
-              <option value="video">Secure Video Consultation</option>
-              <option value="phone">Direct Telephonic</option>
-              <option value="in-person">Chambers / In-Person</option>
+              <option value="video">Video</option>
+              <option value="phone">Phone</option>
+              <option value="in-person">In-person</option>
             </Select>
           </Field>
           <Field label="Gender Preference" htmlFor="gender">
@@ -184,7 +180,7 @@ export default function AdvocatesPage() {
             <MapPin className="size-3.5 text-[#9a6a35]" aria-hidden /> Showing counsel with active vakalat standing in {profile.probableForum}
           </p>
           <Button size="sm" variant="compound" loading={loading} onClick={() => void search(draft)}>
-            Refresh Matching Results
+            Find advocates
           </Button>
         </div>
       </div>
@@ -193,10 +189,10 @@ export default function AdvocatesPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
           <h2 className="font-serif text-[20px] sm:text-[22px] font-normal text-[#2a1c12]">
-            {loading ? "Evaluating Roll Credentials…" : `Top ${sorted.length} Verified Advocates`}
+            {loading ? "Finding advocates…" : `${sorted.length} verified advocates`}
             <span className="ml-2 text-xs font-sans text-[#85725f]">for {prefs.practiceArea}</span>
           </h2>
-          <p className="text-xs text-[#85725f]">Deterministic ranking based on court jurisdiction and experience.</p>
+
         </div>
         <Tabs
           size="sm"
@@ -205,8 +201,8 @@ export default function AdvocatesPage() {
           options={[
             { value: "recommended", label: "Recommended" },
             { value: "nearest", label: "Proximity" },
-            { value: "fee", label: "Consultation Fee" },
-            { value: "experience", label: "Bar Seniority" },
+            { value: "fee", label: "Fee" },
+            { value: "experience", label: "Experience" },
           ]}
         />
       </div>
@@ -227,7 +223,7 @@ export default function AdvocatesPage() {
           </Chip>
         ))}
         <Chip onClick={() => setShowHow((v) => !v)}>
-          Scoring Methodology <ChevronDown className={cn("size-3 ml-0.5 transition", showHow && "rotate-180")} />
+          How scoring works <ChevronDown className={cn("size-3 ml-0.5 transition", showHow && "rotate-180")} />
         </Chip>
       </div>
 
@@ -250,7 +246,7 @@ export default function AdvocatesPage() {
           </div>
           <p className="mt-3 flex items-start gap-1.5 text-[11px] text-[#85725f]">
             <BadgeCheck className="size-3.5 text-[#2e7d32] shrink-0 mt-0.5" aria-hidden />
-            Scoring algorithms adhere to Section 30 of the Advocates Act, 1961. No payment or listing sponsorship modifies ranking order.
+            Ranked by practice fit, court proximity, language, experience, and budget. No paid placements.
           </p>
         </div>
       )}
@@ -260,13 +256,13 @@ export default function AdvocatesPage() {
         {loading
           ? [0, 1, 2].map((i) => <SkeletonCard key={i} />)
           : sorted.map((m, i) => (
-              <AdvocateCard
-                key={m.advocate.id}
-                match={m}
-                rank={i + 1}
-                onBook={() => router.push(dh(`/booking/${m.advocate.id}`))}
-              />
-            ))}
+            <AdvocateCard
+              key={m.advocate.id}
+              match={m}
+              rank={i + 1}
+              onBook={() => router.push(dh(`/booking/${m.advocate.id}`))}
+            />
+          ))}
       </div>
 
       {!loading && (
@@ -294,7 +290,7 @@ export default function AdvocatesPage() {
         <Disclaimer />
         <p className="flex items-center gap-1.5">
           <Languages className="size-3.5 text-[#9a6a35]" aria-hidden />
-          All advocate credentials verified against Bar Council of India official rolls.
+          Credentials verified against Bar Council of India rolls.
         </p>
       </div>
     </div>

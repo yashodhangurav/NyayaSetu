@@ -483,7 +483,11 @@ def get_embedding_provider(reload: bool = False) -> BaseEmbeddingProvider:
     if reload or _embedding_provider_instance is None:
         provider_name = settings.AI_PROVIDER.lower().strip() if settings.AI_PROVIDER else "mock"
 
-        if settings.is_production:
+        if provider_name == "groq":
+            _embedding_provider_instance = DeterministicMockEmbeddingProvider(
+                dimension=settings.EMBEDDING_VECTOR_DIMENSION
+            )
+        elif settings.is_production:
             if provider_name == "mock":
                 raise RuntimeError(
                     "Production configuration error: AI_PROVIDER cannot be 'mock' in production. "

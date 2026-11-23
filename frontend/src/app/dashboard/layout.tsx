@@ -462,6 +462,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  // The AI Legal Assistant owns the viewport: no page scroll and no dashboard footer.
+  const isChatPage = pathname === "/dashboard/chat";
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -474,18 +476,40 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="dashboard-scope min-h-screen bg-[#f4efe6] text-[#2a1c12]">
+    <div
+      className={cn(
+        "dashboard-scope bg-[#f4efe6] text-[#2a1c12]",
+        isChatPage ? "h-dvh overflow-hidden" : "min-h-screen"
+      )}
+    >
       <Sidebar />
-      <div className="flex min-h-screen flex-col lg:pl-[264px]">
+      <div
+        className={cn(
+          "flex flex-col lg:pl-[264px]",
+          isChatPage ? "h-dvh overflow-hidden" : "min-h-screen"
+        )}
+      >
         <Header />
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-8"
+          className={cn(
+            "focus:outline-none",
+            isChatPage
+              ? "min-h-0 flex-1 overflow-hidden px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pb-3"
+              : "flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+          )}
         >
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
+          <div
+            className={cn(
+              "mx-auto w-full",
+              isChatPage ? "h-full min-h-0 max-w-none" : "max-w-6xl"
+            )}
+          >
+            {children}
+          </div>
         </main>
-        <Footer />
+        {!isChatPage && <Footer />}
       </div>
       <BottomNav />
       <EmergencyButton />

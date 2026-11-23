@@ -15,18 +15,12 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.legal_assistant.citation_validator import CitationValidator
-from app.modules.legal_assistant.embedding_provider import reset_embedding_provider
 from app.modules.legal_assistant.retrieval import LegalRetrievalEngine
 from app.modules.legal_knowledge.ingestion import LegalIngestionService
 from app.modules.legal_knowledge.models import LegalSource
 
 
-@pytest.fixture(autouse=True)
-def clean_singletons():
-    """Reset singletons before and after each test."""
-    reset_embedding_provider()
-    yield
-    reset_embedding_provider()
+pytestmark = pytest.mark.usefixtures("isolated_embedding_provider")
 
 
 # ──────────────────────────────────────────────────────────────

@@ -9,12 +9,14 @@ from abc import ABC, abstractmethod
 import json
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, get_args
 
-from pydantic import BaseModel, Field
+import httpx
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.modules.legal_assistant.schemas import DeadlineInfo
 
 
 class BaseLLMProvider(ABC):
@@ -85,24 +87,21 @@ class DeterministicGroundedLLMProvider(BaseLLMProvider):
         # 1. Strict Fallback when sources are insufficient
         if not retrieved_chunks:
             return {
-                "answer": (
-                    "No verified legal sources found in the knowledge base addressing this specific query. "
-                    "The available legal knowledge base does not contain sufficient verified statutory information "
-                    "to address this specific legal question reliably. Under platform safety rules, NyayaSetu will not "
-                    "generate speculative or ungrounded legal statements without supporting Bare Acts or published judicial decisions.\n\n"
-                    "To help provide a more accurate assessment, please specify:\n"
-                    "1. The relevant Indian state or territorial jurisdiction.\n"
-                    "2. The specific Act, transaction type, or date of the incident.\n"
-                    "3. Any notices, agreements, or court orders received.\n\n"
-                    "Note: A high semantic similarity score does not prove that a statutory provision applies to your specific situation. "
-                    "For formal legal advice or representation, please consult an empanelled, verified advocate."
-                ),
-                "legal_topic": "Uncovered Domain / Insufficient Context",
+                "answer": "No verified legal sources found for this question. I need more information before I can explain which rule applies.",
+                "legal_topic": "Insufficient context",
                 "sources_found": False,
+                "decision_badge": "Advocate advised",
+                "confidence_level": "LOW",
+                "confidence_note": "The available sources did not establish a legal rule for these facts.",
                 "cited_references": [],
                 "suggested_next_steps": [
-                    "Provide additional matter facts (e.g., date of cause of action, agreements executed, state).",
-                    "Consult an empanelled advocate for matter-specific legal representation.",
+                    "Describe what happened and what you want to resolve. Leave out names and personal identifiers.",
+                    "Consult an empanelled advocate if you have a notice or hearing date that needs review.",
+                ],
+                "facts_to_confirm": [
+                    "Which state did this happen in?",
+                    "What happened, and when?",
+                    "Have you received a written notice or court order?",
                 ],
                 "limitations_and_missing_facts": [
                     "No verified statutory records found matching the query in the current knowledge base."
@@ -896,6 +895,186 @@ class GeminiLLMProvider(BaseLLMProvider):
         return self._fallback.explain_legal_document(extracted_text, retrieved_chunks, file_name)
 
 
+class GroqLegalPoint(BaseModel):
+    explanation: str = Field(min_length=1)
+    source_number: int = Field(ge=1)
+
+
+DecisionBadge = Literal["Self-help first", "Advocate advised", "Time-sensitive", "Urgent"]
+
+
+class GroqLegalAnswer(BaseModel):
+    legal_points: List[GroqLegalPoint] = Field(max_length=4)
+    documents_to_gather: List[str] = Field(default_factory=list, max_length=5)
+    facts_to_confirm: List[str] = Field(default_factory=list, max_length=3)
+    answer: str = Field(min_length=1)
+    decision_badge: DecisionBadge
+    next_steps: List[str]
+    deadline: Optional[DeadlineInfo] = None
+    cited_source_numbers: List[int]
+    confidence_level: Literal["HIGH", "MEDIUM", "LOW"]
+    confidence_note: Optional[str] = None
+    follow_ups: List[str]
+
+    @field_validator("decision_badge", mode="before")
+    @classmethod
+    def canonicalize_badge(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            label = re.sub(r"[\s_\-‐‑–]+", "", value).casefold()
+            for badge in get_args(DecisionBadge):
+                if label == badge.lower().replace("-", "").replace(" ", ""):
+                    return badge
+        return value
+
+
+class GroqLLMProvider(BaseLLMProvider):
+    """Production Groq LLM provider for high-speed, grounded Indian legal assistance."""
+
+    def __init__(self, api_key: str, model_name: str = "qwen/qwen3.8-27b"):
+        self.api_key = api_key.strip()
+        self.model_name = model_name
+        self._fallback = DeterministicGroundedLLMProvider()
+
+    @property
+    def provider_name(self) -> str:
+        return f"GroqLLMProvider ({self.model_name})"
+
+    @property
+    def is_mock(self) -> bool:
+        return False
+
+    def generate_legal_answer(
+        self,
+        query: str,
+        retrieved_chunks: List[Dict[str, Any]],
+        language: str = "en",
+    ) -> Dict[str, Any]:
+        """Generates grounded legal answer using Groq."""
+        if not retrieved_chunks:
+            return self._fallback.generate_legal_answer(query, retrieved_chunks, language)
+
+        # Build context from verified chunks
+        context_blocks = []
+        context_chunks = retrieved_chunks[:6]
+        for idx, chunk in enumerate(context_chunks, start=1):
+            act = chunk.get("act") or chunk.get("source_title", "Indian Bare Act")
+            sec = chunk.get("section") or chunk.get("section_number", "")
+            heading = chunk.get("clause_heading", "")
+            text = chunk.get("chunk_text") or chunk.get("content", "")
+            context_blocks.append(f"[{idx}] {act} | {sec} - {heading}\nTEXT: {text.strip()}")
+
+        context_str = "\n\n".join(context_blocks)
+
+        target_lang = "Kannada (ಕನ್ನಡ)" if language == "kn" else ("Hindi (हिंदी)" if language == "hi" else "Clear English")
+
+        system_prompt = (
+            "You are the authoritative Legal AI Assistant for 'NyayaSetu Bharat' (India). "
+            "Your duty is to provide citizens with accurate, objective, and plain-language legal INFORMATION (not legal advice).\n\n"
+            "STRICT GROUNDING RULES:\n"
+            "1. You must strictly base your answer on the provided RETRIEVED STATUTORY CONTEXT below.\n"
+            "2. Never hallucinate sections, penal provisions, or court cases. Only cite sections present in the context.\n"
+            "3. If an old law (like IPC 420) is mentioned, clarify the active new law (BNS 2023) if present in context.\n"
+            f"4. Language: You must reply in {target_lang}. If the user asked in Kannada script, write in Kannada. If in Hindi script, write in Hindi.\n"
+            "Open with one short sentence answering the question directly. Add a second sentence only for a condition that changes the answer. Use everyday words and define any legal term on first use. "
+            "In legal_points, give one to four distinct explanations. For each, state the rule in simple words, "
+            "then connect it to a fact the person actually supplied. If a fact is missing, explain conditionally. "
+            "Each point must name the number of the retrieved passage that supports that particular rule. "
+            "If the passages do not address the question, return empty legal_points and cited_source_numbers. "
+            "For next_steps give up to three short actions in order, each starting with a verb. Aim for one sentence per action. Keep any necessary deadline and its trigger together. "
+            "Distinguish a practical suggestion from a legal requirement. Mention a forum, fee, or time limit only if supported. "
+            "Include a deadline only when the passage gives both a time period and its triggering event. "
+            "Leave the target date and remaining days null unless all required dates are known. "
+            "List relevant documents the reader could gather and what each would help establish. "
+            "Ask only for missing facts that could change the answer. For a general definition, omit irrelevant tasks and documents. "
+            "Put legal background in legal_points, supporting records in documents_to_gather, and questions in facts_to_confirm. Avoid repeating the same instruction across sections. Offer at most two short follow-ups. Use no markdown headings and never promise an outcome. "
+            'Copy decision_badge exactly from "Self-help first", "Advocate advised", "Time-sensitive" or "Urgent". '
+            "Keep this label in English for every language. "
+            "Return JSON with this structure (replace placeholders with content in the requested language):\n"
+            '{"answer":"direct answer","decision_badge":"Advocate advised",'
+            '"legal_points":[{"explanation":"rule and its practical meaning","source_number":1}],'
+            '"next_steps":["action and reason"],"documents_to_gather":[],"facts_to_confirm":[],'
+            '"deadline":null,"cited_source_numbers":[1],"confidence_level":"HIGH",'
+            '"confidence_note":null,"follow_ups":[]}. '
+            "When relevant, deadline is an object with title, statutory_basis, target_date and days_remaining."
+        )
+
+        user_prompt = f"CITIZEN INQUIRY: {query}\n\nRETRIEVED STATUTORY CONTEXT:\n{context_str}"
+
+        try:
+            response = httpx.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={
+                    "model": self.model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.1,
+                    "max_completion_tokens": 3000,
+                    "response_format": {"type": "json_object"},
+                },
+                timeout=20.0,
+            )
+            response.raise_for_status()
+            choice = response.json()["choices"][0]
+            if choice["finish_reason"] != "stop":
+                raise ValueError("Groq returned an incomplete legal answer")
+            parsed = GroqLegalAnswer.model_validate_json(choice["message"]["content"])
+            if not parsed.legal_points and not parsed.cited_source_numbers:
+                return self._fallback.generate_legal_answer(query, [], language)
+            points = []
+            source_numbers = set(parsed.cited_source_numbers)
+            for point in parsed.legal_points:
+                if point.source_number > len(context_chunks):
+                    raise ValueError("Unknown source number in legal explanation")
+                source_numbers.add(point.source_number)
+                points.append({
+                    "explanation": point.explanation,
+                    "source_checksum": context_chunks[point.source_number - 1]["content_checksum"],
+                })
+            claimed_refs = [
+                {**chunk, "section_or_paragraph": chunk.get("section_number")}
+                for number, chunk in enumerate(context_chunks, start=1)
+                if number in source_numbers
+            ]
+            if not claimed_refs:
+                raise ValueError("Groq answer did not cite the retrieved sources")
+
+            return {
+                "answer": "\n\n".join([parsed.answer, *(p.explanation for p in parsed.legal_points)]),
+                "legal_points": points,
+                "documents_to_gather": parsed.documents_to_gather,
+                "facts_to_confirm": parsed.facts_to_confirm,
+                "decision_badge": parsed.decision_badge,
+                "next_steps": parsed.next_steps,
+                "deadline": parsed.deadline.model_dump() if parsed.deadline else None,
+                "cited_references": claimed_refs,
+                "sources_found": True,
+                "confidence_level": parsed.confidence_level,
+                "confidence_note": parsed.confidence_note,
+                "follow_up_suggestions": parsed.follow_ups,
+            }
+        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
+            status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+            logger.warning("Groq legal generation failed (%s, HTTP status %s)", type(exc).__name__, status_code)
+            fallback = self._fallback.generate_legal_answer(query, retrieved_chunks, language)
+            return {
+                **fallback,
+                "confidence_level": "LOW",
+                "confidence_note": "AI generation is temporarily unavailable. This response uses retrieved statutory excerpts.",
+            }
+
+    def explain_legal_document(
+        self,
+        extracted_text: str,
+        retrieved_chunks: List[Dict[str, Any]],
+        file_name: str,
+    ) -> Dict[str, Any]:
+        """Explains uploaded legal documents using Groq."""
+        return self._fallback.explain_legal_document(extracted_text, retrieved_chunks, file_name)
+
+
 # Active singleton instance
 _llm_provider_instance: Optional[BaseLLMProvider] = None
 
@@ -912,27 +1091,16 @@ def get_llm_provider(reload: bool = False) -> BaseLLMProvider:
     if reload or _llm_provider_instance is None:
         provider_name = settings.AI_PROVIDER.lower().strip() if settings.AI_PROVIDER else "mock"
 
-        if settings.is_production:
-            if provider_name == "mock":
-                raise RuntimeError(
-                    "Production configuration error: AI_PROVIDER cannot be 'mock' in production. "
-                    "Configure AI_PROVIDER='gemini' and set a valid GEMINI_API_KEY."
-                )
-            if not settings.GEMINI_API_KEY or not settings.GEMINI_API_KEY.strip():
-                raise RuntimeError(
-                    "Production configuration error: GEMINI_API_KEY is required in production. "
-                    "Please set GEMINI_API_KEY in your environment or .env file."
-                )
+        if provider_name == "groq" and settings.GROQ_API_KEY and settings.GROQ_API_KEY.strip():
+            _llm_provider_instance = GroqLLMProvider(
+                api_key=settings.GROQ_API_KEY,
+                model_name=settings.GROQ_LLM_MODEL,
+            )
+        elif provider_name == "gemini" and settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
             _llm_provider_instance = GeminiLLMProvider(
                 api_key=settings.GEMINI_API_KEY,
                 model_name=settings.GEMINI_LLM_MODEL,
             )
         else:
-            if provider_name == "gemini" and settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
-                _llm_provider_instance = GeminiLLMProvider(
-                    api_key=settings.GEMINI_API_KEY,
-                    model_name=settings.GEMINI_LLM_MODEL,
-                )
-            else:
-                _llm_provider_instance = DeterministicGroundedLLMProvider()
+            _llm_provider_instance = DeterministicGroundedLLMProvider()
     return _llm_provider_instance

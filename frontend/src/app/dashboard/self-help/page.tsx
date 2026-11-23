@@ -94,10 +94,9 @@ export default function SelfHelpPage() {
   return (
     <div className="animate-fade space-y-6">
       <PageHeader
-        eyebrow="SELF-HELP DRAFTING DESK"
-        title="Statutory Notices & Petitions"
-        subtitle="Standardized legal drafts compiled under Indian statutory provisions. All notices serve as structured templates prior to advocate signature."
-        actions={<Badge tone="mint"><ShieldCheck className="size-3" /> Advocate-Reviewed Templates</Badge>}
+        title="Self-Help Guides"
+        subtitle="Statutory notice templates. Have an advocate review before sending."
+        actions={<Badge tone="mint"><ShieldCheck className="size-3" /> Reviewed templates</Badge>}
       />
 
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
@@ -134,15 +133,15 @@ export default function SelfHelpPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e2d5c1] bg-[#ebe1d1]/20 px-5 py-4">
               <div className="min-w-0 flex-1">
                 <h2 className="font-serif text-[18px] font-normal text-[#2a1c12]">{template.name}</h2>
-                <p className="font-mono text-[11px] text-[#85725f]">Prefilled from Matter Dossier · {profile ? profile.title : 'Active Matter'}</p>
+                <p className="font-mono text-[11px] text-[#85725f]">Prefilled from your case · {profile ? profile.title : "Active case"}</p>
               </div>
-              <Badge tone="neutral">Standard Statutory Draft</Badge>
+              <Badge tone="neutral">Template</Badge>
             </div>
 
             <div className="grid divide-y divide-[#e2d5c1] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
               {/* Form */}
               <div className="space-y-4 p-5 sm:p-6">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Document Particulars</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Fill in details</p>
                 {template.fields.map((f) => (
                   <Field key={f.key} label={f.label} htmlFor={`f-${f.key}`}>
                     {f.multiline ? (
@@ -166,7 +165,7 @@ export default function SelfHelpPage() {
               {/* Preview */}
               <div className="bg-[#f4efe6]/50 p-5 sm:p-6">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Engrossed Text Preview</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Preview</p>
                   <button type="button" onClick={download} className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-[#9a6a35] hover:underline">
                     <Download className="size-3.5" aria-hidden /> Export PDF
                   </button>
@@ -183,10 +182,10 @@ export default function SelfHelpPage() {
               </p>
               <div className="flex gap-2.5">
                 <Button variant="secondary" size="sm" onClick={() => setReviewed(true)}>
-                  <Sparkles className="size-3.5" aria-hidden /> Request Advocate Review
+                  <Sparkles className="size-3.5" aria-hidden /> Request review
                 </Button>
                 <Button size="sm" onClick={download}>
-                  <Download className="size-3.5" aria-hidden /> Print & Download PDF
+                  <Download className="size-3.5" aria-hidden /> Download PDF
                 </Button>
               </div>
             </div>
@@ -194,7 +193,7 @@ export default function SelfHelpPage() {
 
           {reviewed && (
             <div className="rounded-[2px] border border-[#2a6b3b]/30 bg-[#2a6b3b]/10 px-5 py-3.5 text-[13px] font-medium text-[#2a6b3b]">
-              Notice review requested from Adv. Ananya Rao. Notification will dispatch upon chamber review.
+              Review requested from Adv. Ananya Rao. You&apos;ll be notified when done.
               <button type="button" onClick={() => router.push(dh('/messages'))} className="ml-2 inline-flex items-center gap-1 underline">
                 Open messages <ArrowRight className="size-3.5" aria-hidden />
               </button>
@@ -202,7 +201,7 @@ export default function SelfHelpPage() {
           )}
           {generated && (
             <p className="flex items-center gap-2 font-mono text-[11px] text-[#2a6b3b]">
-              <CheckCircle2 className="size-4" aria-hidden /> Draft compiled. Deposit duplicate copy into your encrypted vault.
+              <CheckCircle2 className="size-4" aria-hidden /> Downloaded. Save a copy to your vault.
             </p>
           )}
 
@@ -225,7 +224,7 @@ export default function SelfHelpPage() {
             ))}
           </div>
 
-          <Disclaimer variant="banner" text="Templates are furnished for reference only. Formal pleadings submitted to a court must be verified and attested in accordance with the Code of Civil Procedure." />
+          <Disclaimer variant="banner" text="Templates are for reference only. Court filings must be verified by an advocate." />
         </div>
       </div>
     </div>

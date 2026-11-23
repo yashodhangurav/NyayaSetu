@@ -66,7 +66,13 @@ class CitationValidator:
                 cit_key = f"{title}_{sec}"
                 if cit_key not in seen_citations:
                     seen_citations.add(cit_key)
-                    matching_chunk = chunk_map.get(sec_lower) or chunk_map.get(title_lower) or {}
+                    matching_chunk = next(
+                        (chunk for chunk in retrieved_chunks
+                         if ref.get("content_checksum") and chunk.get("content_checksum") == ref["content_checksum"]
+                         and chunk.get("source_title", "").strip().lower() == title_lower
+                         and (chunk.get("section_number") or "").strip().lower() == sec_lower),
+                        chunk_map.get(sec_lower) or chunk_map.get(title_lower) or {},
+                    )
                     raw_text_snippet = matching_chunk.get("relevant_text") or (
                         matching_chunk.get("chunk_text")[:280] + "..."
                         if matching_chunk.get("chunk_text") and len(matching_chunk.get("chunk_text")) > 280

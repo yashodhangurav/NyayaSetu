@@ -1,9 +1,6 @@
 import { api } from "@/lib/api-client";
 import { DISCLAIMER } from "./api";
-import { citations as citationBank } from "@/data/dashboard-mock-data";
 import type { Citation, Message } from "@/types/dashboard";
-
-const c = citationBank;
 
 export interface BackendCitationItem {
   source_title: string;
@@ -20,82 +17,40 @@ export interface BackendLegalAskResponse {
   query: string;
   detected_language: string;
   answer: string;
+  decision_badge?: string;
   sources_found: boolean;
   citations: BackendCitationItem[];
   unverified_citations_detected: string[];
   suggested_next_steps: string[];
+  deadline?: {
+    title: string;
+    days_remaining?: number;
+    target_date?: string;
+    statutory_basis?: string;
+    action_label?: string;
+  } | null;
+  confidence_level?: string;
+  confidence_note?: string | null;
+  follow_up_suggestions?: string[];
   disclaimer: string;
   retrieved_chunks_count: number;
   assessed_at: string;
 }
 
-const starterMessages: Message[] = [
-  {
-    id: "msg_1",
-    conversationId: "conv_1",
-    role: "user",
-    content:
-      "My landlord is not returning my ₹60,000 security deposit after I vacated the flat in HSR Layout. He says I damaged the paint.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
-  },
-  {
-    id: "msg_2",
-    conversationId: "conv_1",
-    role: "assistant",
-    content:
-      "Thank you for explaining. Based on what you have shared, this looks like a tenancy deposit dispute.\n\nIn plain language: a security deposit is your money held by the landlord. Once the lease ends and you hand over the property, it should be returned, minus any proven damage beyond normal wear and tear. A general claim of “paint damage” usually needs an inspection report or photos taken at handover to justify a deduction.\n\nYour likely next steps are: (1) send a written demand, (2) keep proof of handover and payment, and (3) if there is no reply, approach the Rent Controller or civil court.",
-    citations: [c.tenancy, c.rent],
-    disclaimer: DISCLAIMER,
-    createdAt: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
-  },
-];
-
+/**
+ * Returns initial conversation history.
+ * Empty by default so user starts with a clean single-column agent interface
+ * and the 4 starter inquiry cards, with zero fake/dummy preloaded messages.
+ */
 export async function getConversation(): Promise<Message[]> {
-  return starterMessages;
+  return [];
 }
-
-const answerFor = (text: string): { body: string; picks: Citation[] } => {
-  const t = text.toLowerCase();
-  if (/cheque|bounce|138/.test(t)) {
-    return {
-      body:
-        "A dishonoured cheque can lead to a criminal complaint under Section 138 of the Negotiable Instruments Act, 1881. The timeline is strict: a written demand notice must go to the drawer within 30 days of receiving the bank’s return memo. The drawer then has 15 days to pay. If they do not, a complaint can be filed within one month after that.\n\nKeep the original cheque, the return memo and proof of the transaction. Because the notice window can close quickly, this is a matter where an advocate should review the papers soon.",
-      picks: [c.cheque, c.consumer],
-    };
-  }
-  if (/salary|employer|job|terminat/.test(t)) {
-    return {
-      body:
-        "Unpaid salary or wrongful termination is usually handled first through a written demand, then before the Labour Court or the authority notified for your establishment. Keep your appointment letter, salary slips, attendance records and any written communication about the termination.\n\nThe limitation period depends on the claim and the forum, so it should be confirmed against your documents before you rely on a date.",
-      picks: [c.consumer, c.cheque],
-    };
-  }
-  if (/divorce|maintenance|husband|wife|domestic/.test(t)) {
-    return {
-      body:
-        "Family matters such as maintenance or protection from domestic violence can be brought before the Family Court or a Magistrate. There is no court fee for many family applications, and free legal aid is available to women and children through the District Legal Services Authority.\n\nIf there is immediate danger, please use the Emergency page. It works without an AI call and lists helplines 112 and 181.",
-      picks: [c.consumer, c.tenancy],
-    };
-  }
-  if (/police|fir|arrest/.test(t)) {
-    return {
-      body:
-        "If the police refuse to register an FIR for a cognizable offence, you can write to the Superintendent of Police, and if that fails, approach the Magistrate. For an arrest, the person must be informed of the grounds, allowed to consult a lawyer, and produced before a Magistrate within 24 hours.\n\nIn an emergency, call 112 immediately. The Emergency page in this app works without any AI call.",
-      picks: [c.criminal, c.cheque],
-    };
-  }
-  return {
-    body:
-      "Based on what you have described, the first question is whether the other side has a legal obligation that is clear from a document. If yes, a written demand is usually the cheapest first step. If the obligation is disputed, a court or tribunal may need to decide it.\n\nKeep copies of every agreement, payment record and message. Deadlines matter: limitation periods can end a claim even when the facts are strong. I can help you organise the facts into a case profile, or you can speak with an advocate.",
-    picks: [c.tenancy, c.consumer],
-  };
-};
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Executes grounded question answering via the RAG Legal Assistant API (/api/v1/legal/ask)
- * with token stream simulation and statutory fallback.
+ * Executes grounded question answering via the live RAG Legal Assistant API (/api/v1/legal/ask)
+ * with token stream simulation.
  */
 export async function streamAnswer(
   question: string,
@@ -105,31 +60,24 @@ export async function streamAnswer(
   let citations: Citation[] = [];
   let disclaimerText = DISCLAIMER;
 
-  try {
-    const res = await api.post<BackendLegalAskResponse>("/api/v1/legal/ask", {
-      query: question,
-      preferred_language: "en",
-      max_sources: 5,
-    });
+  const res = await api.post<BackendLegalAskResponse>("/api/v1/legal/ask", {
+    query: question,
+    preferred_language: "en",
+    max_sources: 5,
+  });
 
-    responseText = res.answer;
-    if (res.disclaimer) disclaimerText = res.disclaimer;
+  responseText = res.answer;
+  if (res.disclaimer) disclaimerText = res.disclaimer;
 
-    if (res.citations && res.citations.length > 0) {
-      citations = res.citations.map((item, idx) => ({
-        id: item.content_checksum || `cit_${idx}`,
-        act: item.source_title,
-        section: item.section_or_paragraph || "Statutory Provision",
-        title: item.clause_heading || item.source_title,
-        snippet: `Grounded in ${item.source_type.replace(/_/g, " ")}. Identifier: ${item.act_or_judgment_identifier || "Official Gazette"}.`,
-        url: item.official_source_url || "https://www.indiacode.nic.in",
-      }));
-    }
-  } catch {
-    // Fallback to local curated knowledge bank
-    const fallback = answerFor(question);
-    responseText = fallback.body;
-    citations = fallback.picks;
+  if (res.citations && res.citations.length > 0) {
+    citations = res.citations.map((item, idx) => ({
+      id: item.content_checksum || `cit_${idx}`,
+      act: item.source_title,
+      section: item.section_or_paragraph || "Statutory Provision",
+      title: item.clause_heading || item.source_title,
+      snippet: `Grounded in ${item.source_type.replace(/_/g, " ")}. Identifier: ${item.act_or_judgment_identifier || "Official Gazette"}.`,
+      url: item.official_source_url || "https://www.indiacode.nic.in",
+    }));
   }
 
   // Smoothly emit words for an editorial streaming experience

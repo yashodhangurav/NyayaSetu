@@ -104,17 +104,16 @@ export default function ScanPage() {
   return (
     <div className="animate-fade space-y-6">
       <PageHeader
-        eyebrow="OCR & EXPLAINER"
-        title="Understand a legal document"
-        subtitle="Photograph a notice, FIR copy, agreement or summons. NyayaSetu extracts statutory text and explains obligations in plain language."
-        actions={<Badge tone="mint"><ScanLine className="size-3 text-[#2a6b3b]" /> Verified Vision Engine</Badge>}
+        title="Scan & Explain"
+        subtitle="Upload or photograph a notice, agreement, or summons. We extract key dates, amounts, and what it means in plain language."
+
       />
 
       {errorMsg && (
         <div className="rounded-[2px] border border-[#9a3424]/40 bg-[#fbf2ef] p-4 flex items-start gap-3">
           <AlertTriangle className="size-5 text-[#9a3424] mt-0.5 shrink-0" />
           <div className="flex-1">
-            <h4 className="text-[13px] font-semibold text-[#7a2517]">Document Processing Error</h4>
+            <h4 className="text-[13px] font-semibold text-[#7a2517]">Could not read document</h4>
             <p className="mt-1 text-[12px] leading-relaxed text-[#7a2517]">{errorMsg}</p>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setErrorMsg(null)}>
@@ -122,13 +121,6 @@ export default function ScanPage() {
           </Button>
         </div>
       )}
-
-      <div className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/30 p-3.5 flex items-start gap-3">
-        <ScanLine className="size-4 text-[#9a6a35] mt-0.5 shrink-0" />
-        <div className="text-xs text-[#5b4a3b] leading-relaxed">
-          <strong className="text-[#2a1c12] font-semibold">NyayaSetu Document Vision:</strong> Optical document parsing and statutory entity extraction is active via NyayaSetu&apos;s grounded document pipeline. All uploads are stored in your private vault with DPDP compliance.
-        </div>
-      </div>
 
       {stage === 'idle' && (
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -187,8 +179,7 @@ export default function ScanPage() {
 
           <div className="space-y-4">
             <div className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-6">
-              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#85725f]">Analysis Breakdown</p>
-              <h3 className="mt-1 font-serif text-[18px] font-normal text-[#2a1c12]">What you will receive</h3>
+              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#85725f]">What you&apos;ll get</p>
               <ul className="mt-4 space-y-3">
                 {[
                   ['Document type', 'Notice, FIR, commercial agreement, or court summons'],
@@ -208,10 +199,7 @@ export default function ScanPage() {
               </ul>
             </div>
             <div className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/30 p-4">
-              <p className="text-[12px] leading-relaxed text-[#5b4a3b]">
-                <span className="font-semibold text-[#2a1c12]">DPDP Compliance: </span> your document is parsed strictly for private comprehension.
-                You retain sovereign authority over saving it to your encrypted vault or sharing it with an enrolled advocate.
-              </p>
+              <p className="text-[12px] leading-relaxed text-[#5b4a3b]">Your document is processed privately. You choose whether to save it to your vault or share it.</p>
             </div>
           </div>
         </div>
@@ -240,13 +228,8 @@ export default function ScanPage() {
           <div className="grid size-16 place-items-center rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/40">
             <ScanLine className="size-7 text-[#2a6b3b]" />
           </div>
-          <h2 className="mt-5 font-serif text-[24px] font-normal text-[#2a1c12]">Translating into plain language</h2>
-          <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[#5b4a3b]">
-            Cataloguing document classification, named parties, limitation dates, and specific legal obligations.
-          </p>
-          <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#85725f]">
-            NyayaSetu Comprehension Engine Active
-          </p>
+          <h2 className="mt-5 font-serif text-[24px] font-normal text-[#2a1c12]">Explaining in plain language</h2>
+          <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[#5b4a3b]">Finding parties, dates, and your obligations.</p>
         </div>
       )}
 
@@ -256,10 +239,9 @@ export default function ScanPage() {
             <div className="flex items-start gap-3 rounded-[2px] border border-[#b97a29]/40 bg-[#fdf5eb] px-5 py-4">
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[#b97a29]" aria-hidden />
               <div className="flex-1">
-                <p className="text-[13px] font-semibold text-[#8a5b1c]">Low OCR confidence — verification advised</p>
+                <p className="text-[13px] font-semibold text-[#8a5b1c]">Low quality — results may not be accurate</p>
                 <p className="mt-1 text-[12px] leading-relaxed text-[#5b4a3b]">
-                  Only {Math.round(ocr.confidence * 100)}% of the text could be parsed with high certainty. Please review extracted values
-                  below or retake the photograph in well-lit, non-reflective conditions.
+                  Only {Math.round(ocr.confidence * 100)}% of text was read clearly. Try retaking the photo in good lighting.
                 </p>
               </div>
               <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
@@ -274,11 +256,7 @@ export default function ScanPage() {
               <div className="flex items-center justify-between border-b border-[#e2d5c1] px-5 py-3.5 bg-[#ebe1d1]/20">
                 <div className="flex items-center gap-2">
                   <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#85725f]">Source Document</p>
-                  {ocr.ocrEngine && (
-                    <span className="font-mono text-[10px] text-[#85725f] bg-[#f4efe6] px-1.5 py-0.5 rounded-[1px] border border-[#e2d5c1]">
-                      {ocr.ocrEngine}
-                    </span>
-                  )}
+
                 </div>
                 <Badge tone={ocr.lowConfidence ? 'warn' : 'mint'}>
                   {Math.round(ocr.confidence * 100)}% Confidence
@@ -309,7 +287,7 @@ export default function ScanPage() {
                 )}
               </div>
               <div className="border-t border-[#e2d5c1] px-5 py-4">
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Extracted Raw Text</p>
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Extracted text</p>
                 <div className="max-h-36 overflow-y-auto rounded-[2px] border border-[#e2d5c1] bg-[#f4efe6] p-3.5">
                   <p className="font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-[#2a1c12]">{ocr.text}</p>
                 </div>
@@ -321,7 +299,7 @@ export default function ScanPage() {
               <div className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-5 sm:p-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Classification</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Document type</p>
                     <h2 className="mt-1 font-serif text-[22px] font-normal text-[#2a1c12]">{explanation.documentType}</h2>
                   </div>
                   <Button size="sm" variant={editing ? 'primary' : 'secondary'} onClick={() => setEditing((v) => !v)}>
@@ -414,7 +392,7 @@ export default function ScanPage() {
 
               {explanation.citations && explanation.citations.length > 0 && (
                 <div className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-5">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Verified Statutory Citations</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#85725f]">Laws cited</p>
                   <ul className="mt-2.5 space-y-2">
                     {explanation.citations.map((c, idx) => (
                       <li key={idx} className="text-[12px] leading-relaxed text-[#2a1c12]">
@@ -432,7 +410,7 @@ export default function ScanPage() {
                   {saved ? <><Check className="size-4" /> Dates recorded</> : <><CalendarPlus className="size-4" /> Add dates to limitation tracker</>}
                 </Button>
                 <Button variant="secondary" onClick={() => router.push(dh('/vault'))}>
-                  Deposit to vault <ArrowRight className="size-4" aria-hidden />
+                  Save to vault <ArrowRight className="size-4" aria-hidden />
                 </Button>
               </div>
               <div className="flex items-center justify-between pt-2">

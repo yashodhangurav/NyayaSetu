@@ -28,7 +28,8 @@ function cleanup() {
       pids = output
         .split("\n")
         .map((line) => line.trim())
-        .filter((line) => /LISTENING/i.test(line))
+        // Match the exact port (":3000 ") so ports like 30000 are untouched.
+        .filter((line) => /:3000\s/i.test(line) && /LISTENING/i.test(line))
         .map((line) => line.split(/\s+/).pop())
         .filter((pid) => pid && /^\d+$/.test(pid) && pid !== "0" && pid !== String(process.pid));
     } else {
@@ -43,7 +44,11 @@ function cleanup() {
     for (const pid of pids) {
       if (pid && pid !== currentPid) {
         try {
-          process.kill(Number(pid), "SIGKILL");
+          if (process.platform === "win32") {
+            execSync(`taskkill /PID ${pid} /T /F`, { stdio: "ignore" });
+          } else {
+            process.kill(Number(pid), "SIGKILL");
+          }
         } catch {
           // Process already ended
         }

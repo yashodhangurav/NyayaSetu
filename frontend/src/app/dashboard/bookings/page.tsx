@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarClock, CalendarPlus, CheckCircle2, Clock, Download, MessageSquare, Star } from 'lucide-react';
 import { listBookings, downloadIcs } from '@/services/dashboard/bookings';
@@ -39,10 +38,8 @@ export default function BookingsPage() {
   return (
     <div className="animate-fade space-y-6">
       <PageHeader
-        eyebrow="CONSULTATION REGISTER"
-        title="Scheduled Consultations"
-        subtitle="Permanent ledger of booked sessions, past advocate deliberations, and verified evaluations."
-        backTo={dh('/')}
+        title="Consultations"
+        backTo={dh("/")}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e2d5c1] pb-4">
@@ -50,12 +47,12 @@ export default function BookingsPage() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: 'upcoming', label: 'Upcoming Dockets', count: upcoming.length },
-            { value: 'past', label: 'Concluded Proceedings', count: past.length },
+            { value: 'upcoming', label: 'Upcoming', count: upcoming.length },
+            { value: 'past', label: 'Past', count: past.length },
           ]}
         />
         <Button size="sm" variant="secondary" onClick={() => router.push(dh('/advocates'))}>
-          Schedule Additional Hearing
+          Book consultation
         </Button>
       </div>
 
@@ -63,8 +60,8 @@ export default function BookingsPage() {
         <EmptyState
           icon={<CalendarClock className="size-5 text-[#9a6a35]" />}
           title={tab === 'upcoming' ? 'No Active Hearings Scheduled' : 'No Concluded Hearings'}
-          body="Identify an enrolled advocate matched to your legal forum and reserve a 30-minute conference."
-          action={<Button onClick={() => router.push(dh('/advocates'))}>Explore Advocate Roll</Button>}
+          body="Book a 30-minute call with a verified advocate."
+          action={<Button onClick={() => router.push(dh('/advocates'))}>Find advocate</Button>}
         />
       ) : (
         <div className="space-y-4">
@@ -91,14 +88,14 @@ export default function BookingsPage() {
                     <p className="mt-1.5 font-mono text-[11px] text-[#85725f]">Docket Ref: #{b.id} · Fee: {formatInr(b.amount)}</p>
                   </div>
                 </div>
-                <Badge tone={statusTone[b.status]}>{b.status.replace('_', ' ').toUpperCase()}</Badge>
+                <Badge tone={statusTone[b.status]}>{b.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</Badge>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2.5 pt-4 border-t border-[#e2d5c1]">
                 {b.status === 'confirmed' && (
                   <>
                     <Button size="sm" onClick={() => router.push(dh('/messages'))}>
-                      <MessageSquare className="size-3.5" aria-hidden /> Enter Chambers Messages
+                      <MessageSquare className="size-3.5" aria-hidden /> Message
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => downloadIcs(b)}>
                       <Download className="size-3.5" aria-hidden /> Add to Calendar
@@ -107,7 +104,7 @@ export default function BookingsPage() {
                 )}
                 {b.status === 'completed' && !b.feedbackGiven && (
                   <Button size="sm" onClick={() => router.push(dh(`/feedback/${b.id}`))}>
-                    <Star className="size-3.5" aria-hidden /> Record Verified Evaluation
+                    <Star className="size-3.5" aria-hidden /> Leave review
                   </Button>
                 )}
                 {b.status === 'completed' && b.feedbackGiven && (
@@ -124,10 +121,7 @@ export default function BookingsPage() {
         </div>
       )}
 
-      <p className="font-mono text-[11px] text-[#85725f]">
-        Procedural notice: to modify an authorized booking, message the advocate directly or contact the{' '}
-        <Link href={dh('/profile')} className="font-medium text-[#9a6a35] underline underline-offset-4 hover:text-[#2a1c12]">grievance officer</Link>.
-      </p>
+
     </div>
   );
 }

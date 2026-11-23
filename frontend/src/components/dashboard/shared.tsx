@@ -344,10 +344,12 @@ export function CitationChip({ citation }: { citation: Citation }) {
             <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
               Close
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => window.open(citation.url, "_blank", "noopener")}>
-              View on India Code
-              <ExternalLink className="size-3.5 ml-1" />
-            </Button>
+            {citation.url && (
+              <Button variant="secondary" size="sm" onClick={() => window.open(citation.url, "_blank", "noopener")}>
+                Open official source
+                <ExternalLink className="size-3.5 ml-1" />
+              </Button>
+            )}
           </div>
         }
       >

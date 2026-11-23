@@ -2,7 +2,7 @@
 
 import uuid
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from app.modules.legal_assistant.embedding_provider import (
 )
 from app.modules.legal_assistant.llm_provider import (
     DeterministicGroundedLLMProvider,
+    GroqLLMProvider,
     get_llm_provider,
 )
 from app.modules.legal_knowledge.ingestion import LegalIngestionService
@@ -156,7 +157,9 @@ async def test_legal_ask_insufficient_sources_returns_safe_fallback(async_client
     assert data["sources_found"] is False
     assert len(data["citations"]) == 0
     assert "No verified legal sources found" in data["answer"]
-    assert "will not generate speculative or ungrounded" in data["answer"]
+    assert "before I can explain which rule applies" in data["answer"]
+    assert data["confidence_level"] == "LOW"
+    assert data["facts_to_confirm"] and not data["legal_points"]
     assert any("Consult an empanelled advocate" in step for step in data["suggested_next_steps"])
 
 
@@ -352,3 +355,60 @@ async def test_audit_log_recorded_for_legal_ai_queries(async_client: AsyncClient
     assert audit is not None
     assert "undertrial" in audit.payload_snapshot["query"].lower()
     assert audit.payload_snapshot["sources_found"] is True
+
+
+@pytest.mark.asyncio
+async def test_groq_receives_bundled_statute_and_returns_its_citation(async_client, monkeypatch):
+    monkeypatch.setattr(
+        "app.modules.legal_assistant.service.get_llm_provider",
+        lambda: GroqLLMProvider(api_key="test-key"),
+    )
+
+    def complete(url, *, headers, json, timeout):
+        prompt = json["messages"][1]["content"]
+        assert "Section 138" in prompt
+        assert "dishonour" in prompt.lower() and len(prompt) > 300
+        return Response(
+            200,
+            request=Request("POST", url),
+            json={"choices": [{"finish_reason": "stop", "message": {"content": (
+                '{"answer":"Section 138 concerns cheque dishonour.",'
+                '"legal_points":[{"explanation":"Check the bank return memo.","source_number":1}],'
+                '"documents_to_gather":["Bank return memo"],"facts_to_confirm":["When did you receive the memo?"],'
+                '"decision_badge":"ADVOCATE_ADVISED","next_steps":[],'
+                '"cited_source_numbers":[1],"confidence_level":"HIGH","follow_ups":[]}'
+            )}}]},
+        )
+
+    monkeypatch.setattr("app.modules.legal_assistant.llm_provider.httpx.post", complete)
+    response = await async_client.post(
+        "/api/v1/legal/ask", json={"query": "What is cheque bounce under Section 138?"}
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["answer"].startswith("Section 138 concerns cheque dishonour.")
+    assert result["decision_badge"] == "Advocate advised"
+    assert result["legal_points"][0]["source_checksum"] == result["citations"][0]["content_checksum"]
+    assert result["documents_to_gather"] == ["Bank return memo"]
+    assert result["facts_to_confirm"] == ["When did you receive the memo?"]
+    assert len(result["citations"]) == 1
+    assert result["citations"][0]["section_or_paragraph"] == "Section 138"
+    assert result["citations"][0]["relevant_text"]
+
+
+@pytest.mark.asyncio
+async def test_chat_greeting_does_not_require_retrieval(async_client, monkeypatch):
+    async def unexpected_retrieval(*args, **kwargs):
+        pytest.fail("A greeting should be answered before statutory retrieval")
+
+    monkeypatch.setattr(
+        "app.modules.legal_assistant.service.LegalRetrievalEngine.retrieve",
+        unexpected_retrieval,
+    )
+    response = await async_client.post("/api/v1/legal/ask", json={"query": "  Hi!  "})
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["kind"] == "greeting"
+    assert result["answer"].startswith("Hello!")
+    assert result["citations"] == []

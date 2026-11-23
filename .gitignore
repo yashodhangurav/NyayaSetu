@@ -57,7 +57,7 @@ next-env.d.ts
 LadyJustice_checkpoint_*.blend
 LadyJustice_pre_upgrade.blend
 
-# python virtual environment & cache
+# python virtual environment & cache (generated per OS; never committed)
 venv/
 .venv/
 __pycache__/

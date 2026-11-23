@@ -27,6 +27,18 @@ const nextConfig: NextConfig = {
     const backendUrl = process.env.BACKEND_API_URL || "http://127.0.0.1:8000";
     return [
       {
+        source: "/models/lady-justice/source/model.glb",
+        destination: "/models/lady-justice/model.glb",
+      },
+      {
+        source: "/model/lady-justice-with-scales-and-sword/source/model.glb",
+        destination: "/models/lady-justice/model.glb",
+      },
+      {
+        source: "/model/lady-justice-with-scales-and-sword/textures/:name",
+        destination: "/models/lady-justice/textures/:name",
+      },
+      {
         source: "/api/v1/:path*",
         destination: `${backendUrl}/api/v1/:path*`,
       },

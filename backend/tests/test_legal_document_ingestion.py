@@ -20,10 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.modules.legal_assistant.embedding_provider import (
-    DeterministicMockEmbeddingProvider,
-    reset_embedding_provider,
-)
+from app.modules.legal_assistant.embedding_provider import DeterministicMockEmbeddingProvider
 from app.modules.legal_knowledge.document_parser import DocumentParser
 from app.modules.legal_knowledge.ingestion_pipeline import (
     LegalDocumentIngestionPipeline,
@@ -35,12 +32,7 @@ from app.modules.legal_knowledge.models import LegalChunk, LegalIngestionJob, Le
 from app.modules.users.models import User
 
 
-@pytest.fixture(autouse=True)
-def clean_singletons():
-    """Reset singletons before and after each test."""
-    reset_embedding_provider()
-    yield
-    reset_embedding_provider()
+pytestmark = pytest.mark.usefixtures("isolated_embedding_provider")
 
 
 def create_in_memory_pdf(text: str) -> bytes:

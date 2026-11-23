@@ -1,157 +1,123 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   CalendarClock,
-  Clock,
-  HelpCircle,
-  PhoneCall,
+  ChevronDown,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  Flag,
+  Share2,
+  FolderPlus,
   Scale,
+  PhoneCall,
+  HelpCircle,
+  Check,
 } from "lucide-react";
-import {
-  type AssistantAnswer,
-  calculate138Deadlines,
-} from "@/services/dashboard/chat-assistant";
+import type { AssistantAnswer } from "@/services/dashboard/chat-assistant";
 import { CitationChip } from "@/components/dashboard/shared";
-import { Button } from "@/components/dashboard/ui";
+import { Badge, Button } from "@/components/dashboard/ui";
 import { cn } from "@/lib/utils";
 import { CaseBriefFlow } from "./CaseBriefFlow";
 import { AdvocateMatchInline } from "./AdvocateMatchInline";
 import { FlagErrorDialog } from "./FlagErrorDialog";
-import { ActionBar } from "./primitives/ActionBar";
-import { BrandMark } from "./primitives/BrandMark";
-import { DecisionBadge } from "./primitives/DecisionBadge";
-import { SectionLabel } from "./primitives/SectionLabel";
-import { SourcesAccordion } from "./primitives/SourcesAccordion";
-import styles from "../chat.module.css";
 
 interface AssistantAnswerCardProps {
   answer: AssistantAnswer;
   onSaveToCases: (title: string, summary: string) => void;
-  onAddToDeadlines: (title: string, dueDate: string) => void;
   onRequestConsultation: (advocateName: string) => void;
   onFollowUpClick: (prompt: string) => void;
   onShowToast: (message: string) => void;
 }
 
+function AnswerDetails({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <details className="group border-t border-[#ded4c5]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3.5 font-sans text-[15px] font-medium text-[#493727] outline-offset-2 hover:text-[#855a2c] focus-visible:outline-2 [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown className="size-4 shrink-0 text-[#816541] transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="space-y-3 pb-4 text-[15px] leading-6 text-[#4f4033]">{children}</div>
+    </details>
+  );
+}
+
 export function AssistantAnswerCard({
   answer,
   onSaveToCases,
-  onAddToDeadlines,
   onRequestConsultation,
   onFollowUpClick,
   onShowToast,
 }: AssistantAnswerCardProps) {
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const extraCitations = answer.citations.filter((citation) =>
+    !answer.legalPoints.some((point) => point.citation.id === citation.id)
+  );
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [showCaseBrief, setShowCaseBrief] = useState(false);
   const [showAdvocates, setShowAdvocates] = useState(false);
   const [showFlagInput, setShowFlagInput] = useState(false);
 
-  // Reactive deadline calculation state (for cheque bounce / 138)
-  const [memoDate, setMemoDate] = useState<string>(() => {
-    return answer.deadlineCalculation?.memoDate || new Date().toISOString().split("T")[0];
-  });
-
-  const activeDeadlines = answer.deadlineCalculation
-    ? calculate138Deadlines(memoDate)
-    : undefined;
-
-  // Escape closes the most recently expanded inline block.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      // Inline panels own their own Escape handling (so a consent modal
-      // closes before the whole brief does).
-      if (showFlagInput) setShowFlagInput(false);
-      else if (sourcesOpen) setSourcesOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showFlagInput, sourcesOpen]);
-
   const handleCopy = () => {
     const textToCopy = [
       answer.oneLineSummary,
       ...answer.explanation,
-      ...answer.nextSteps.map((s) => `${s.step}. ${s.text}`),
-    ].join("\n\n");
+      ...answer.legalPoints.map(({ explanation, citation }) =>
+        `${explanation} (${citation.act}, ${citation.section}) ${citation.url}`
+      ),
+      ...(answer.nextSteps.length ? ["What to do next", ...answer.nextSteps.map((s) => `${s.step}. ${s.text}`)] : []),
+      ...(answer.documentsToGather.length ? ["Documents to gather", ...answer.documentsToGather] : []),
+      ...(answer.factsToConfirm.length ? ["Details that could change the answer", ...answer.factsToConfirm] : []),
+      ...(answer.deadline ? [
+        answer.deadline.title,
+        answer.deadline.statutory_basis,
+        answer.deadline.target_date,
+        "Have an empanelled advocate review any statutory deadline.",
+      ] : []),
+      answer.confidenceReason,
+    ].filter(Boolean).join("\n\n");
     void navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     onShowToast("Answer copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const followUps = answer.followUpChips?.slice(0, 3) ?? [];
-  const followUpRow = followUps.length > 0 && (
-    <div className="flex flex-wrap gap-1.5">
-      {followUps.map((chip) => (
-        <button
-          key={chip}
-          type="button"
-          onClick={() => onFollowUpClick(chip)}
-          className={cn(
-            styles.pill,
-            "min-h-10 rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/30 px-3.5 text-xs text-[#5b4a3b] transition-colors hover:border-[#9a6a35] hover:bg-[#ebe1d1]/60 hover:text-[#2a1c12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9a6a35] active:bg-[#e2d5c1] sm:min-h-8"
-          )}
-        >
-          {chip}
-        </button>
-      ))}
-    </div>
-  );
+  const badgeToneMap: Record<AssistantAnswer["decisionBadge"], "mint" | "warn" | "neutral" | "danger"> = {
+    "Self-help first": "mint",
+    "Time-sensitive": "warn",
+    "Advocate advised": "neutral",
+    Urgent: "danger",
+  };
 
-  // -------------------------------------------------------------------------
-  // EMERGENCY — the only red block in the assistant surface.
-  // -------------------------------------------------------------------------
-  if (answer.isEmergency) {
-    return (
-      <div className={cn(styles.fadeIn, "space-y-4")}>
-        <div className="rounded-[2px] border border-[#c0392b]/40 bg-[#fffaf2] p-5 shadow-[0_1px_2px_rgba(42,28,18,0.04)] space-y-4 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#e2d5c1] pb-3">
-            <div className="flex min-w-0 items-start gap-2.5">
-              <BrandMark />
-              <div className="min-w-0 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <SectionLabel className="text-[#c0392b]">
-                    Emergency safeguards active
-                  </SectionLabel>
-                  <span className="font-mono text-[10px] text-[#85725f]">
-                    Article 22 Protected
-                  </span>
-                </div>
-                <h3 className="font-serif text-[17px] font-normal leading-snug text-[#2a1c12] sm:text-[19px]">
-                  {answer.oneLineSummary}
-                </h3>
-              </div>
-            </div>
-            <DecisionBadge variant={answer.decisionBadge} />
+  return (
+    <div className="space-y-4 animate-in-up">
+      <div className="min-w-0 rounded-[2px] border border-[#d9cebd] border-t-[3px] border-t-[#966931] bg-[#fffaf2] px-4 py-5 text-[#2a1c12] sm:px-7 sm:py-6 [overflow-wrap:anywhere]">
+        {/* 1. Decision badge + one-line answer */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-medium text-[#725330]">Short answer</span>
+            <Badge tone={badgeToneMap[answer.decisionBadge]}>
+              {answer.decisionBadge}
+            </Badge>
           </div>
+          <p className="max-w-[54ch] font-serif text-[22px] leading-[1.28] text-[#2a1c12] sm:text-[26px]">
+            {answer.oneLineSummary}
+          </p>
+        </div>
 
-          <ul className="space-y-2 text-[13px] leading-relaxed text-[#2a1c12]">
-            {answer.emergencyBullets?.map((bullet, index) => (
-              <li key={index} className="flex items-start gap-2.5">
-                <span
-                  className="mt-2 size-1.5 shrink-0 rounded-full bg-[#c0392b]"
-                  aria-hidden="true"
-                />
-                <span className="min-w-0 break-words">{bullet}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-[#e2d5c1]/70 pt-3">
+        {answer.isEmergency && (
+          <div className="pt-2 border-t border-[#e2d5c1]/70 flex flex-wrap items-center gap-2.5">
             <a
               href="tel:112"
-              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[2px] border border-[#c0392b] bg-[#c0392b] px-4 text-xs font-medium uppercase tracking-[0.08em] text-[#fffaf2] transition-colors hover:bg-[#a93226] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9a6a35] active:bg-[#96271c]"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[2px] border border-[#c0392b] bg-[#c0392b] px-4 text-xs font-sans uppercase tracking-[0.08em] font-semibold text-[#fffaf2] transition-colors hover:bg-[#a93226]"
             >
               <PhoneCall className="size-3.5" aria-hidden="true" />
               Call 112 Police
             </a>
             <a
               href="tel:15100"
-              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[2px] border border-[#2a1c12] bg-[#2a1c12] px-4 text-xs font-medium uppercase tracking-[0.08em] text-[#fffaf2] transition-colors hover:border-[#9a6a35] hover:bg-[#9a6a35] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9a6a35] active:bg-[#7c5226]"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[2px] border border-[#2a1c12] bg-[#2a1c12] px-4 text-xs font-sans uppercase tracking-[0.08em] font-semibold text-[#fffaf2] transition-colors hover:bg-[#9a6a35] hover:border-[#9a6a35]"
             >
               <PhoneCall className="size-3.5" aria-hidden="true" />
               Call 15100 (Free Legal Aid)
@@ -159,233 +125,198 @@ export function AssistantAnswerCard({
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => setShowAdvocates((value) => !value)}
-              aria-pressed={showAdvocates}
-              className="min-h-10 text-xs sm:min-h-9"
+              onClick={() => setShowAdvocates((prev) => !prev)}
+              className="h-9 text-xs"
             >
-              <Scale className="mr-1 size-3.5 text-[#9a6a35]" aria-hidden="true" />
+              <Scale className="size-3.5 mr-1 text-[#9a6a35]" aria-hidden="true" />
               Connect to an advocate urgently
             </Button>
           </div>
-
-          {answer.citations.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-[#e2d5c1]/60 pt-3">
-              <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#85725f]">
-                Statutory source
-              </span>
-              {answer.citations.map((citation) => (
-                <CitationChip key={citation.id} citation={citation} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {showAdvocates && (
-          <AdvocateMatchInline
-            onClose={() => setShowAdvocates(false)}
-            onRequestConsultation={(name) => {
-              onRequestConsultation(name);
-              onShowToast(`Urgent consultation request transmitted to ${name}`);
-            }}
-          />
         )}
 
-        {followUpRow}
-      </div>
-    );
-  }
+        {answer.deadline && (
+          <div className="mt-4 space-y-1 rounded-[2px] border border-[#e2d5c1] bg-[#fff8e7] p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2 font-semibold">
+              <CalendarClock className="size-4 text-[#b54708]" aria-hidden="true" />
+              {answer.deadline.title}
+            </div>
+            {answer.deadline.statutory_basis && <p>{answer.deadline.statutory_basis}</p>}
+            {answer.deadline.target_date && <p>Estimated deadline {answer.deadline.target_date}</p>}
+            <p>Have an empanelled advocate review any statutory deadline.</p>
+          </div>
+        )}
 
-  // -------------------------------------------------------------------------
-  // STANDARD ANSWER — no bubble, no card: quiet sections on the cream page.
-  // -------------------------------------------------------------------------
-  return (
-    <div className={cn(styles.fadeIn, "space-y-5")}>
-      {/* SUMMARY — brand mark and variant badge share the first line. */}
-      <section className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <BrandMark />
-          <SectionLabel>SUMMARY</SectionLabel>
-          <DecisionBadge variant={answer.decisionBadge} className="ml-auto" />
-        </div>
-        <p className="font-serif text-[17px] font-normal leading-snug text-[#2a1c12] sm:text-[19px]">
-          {answer.oneLineSummary}
-        </p>
-        {answer.isLowConfidence && (
-          <p className="flex items-start gap-1.5 text-xs leading-relaxed text-[#85725f]">
-            <HelpCircle
-              className="mt-px size-3.5 shrink-0 text-[#9a6a35]"
-              aria-hidden="true"
-            />
-            <span className="min-w-0 break-words">
-              <span className="font-medium text-[#5b4a3b]">
-                I&apos;m not fully sure about this one.
-              </span>{" "}
-              {answer.confidenceReason} Marked as Advocate advised — we recommend organising your
-              facts into a case brief below.
-            </span>
+        {answer.isLowConfidence && answer.confidenceReason && (
+          <p className="mt-3 flex items-start gap-2 text-sm leading-6 text-[#6a4d2b]">
+            <HelpCircle className="mt-1 size-4 shrink-0" aria-hidden="true" />
+            {answer.confidenceReason}
           </p>
         )}
-      </section>
 
-      {/* EXPLANATION */}
-      {answer.explanation.length > 0 && (
-        <section className="space-y-2">
-          <SectionLabel>EXPLANATION</SectionLabel>
-          <div className="space-y-2 text-[13px] leading-relaxed text-[#5b4a3b]">
-            {answer.explanation.map((paragraph, index) => (
-              <p key={index} className="min-w-0 break-words">
-                {paragraph}
-              </p>
-            ))}
-          </div>
-        </section>
-      )}
+        {answer.nextSteps.length > 0 && (
+          <section className="mt-5 rounded-[2px] bg-[#f4eee4] px-4 py-4 sm:px-5">
+            <h3 className="font-serif text-[21px] leading-tight">What to do next</h3>
+            <ol className="mt-1 divide-y divide-[#ded4c5]">
+              {answer.nextSteps.map((step) => (
+                <li key={step.step} className="flex gap-3 pt-3 pb-3 last:pb-0">
+                  <span aria-hidden="true" className="w-5 shrink-0 font-mono text-sm leading-6 text-[#805c33]">
+                    {step.step}.
+                  </span>
+                  <span className="max-w-[65ch] font-sans text-[15px] leading-6">{step.text}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
-      {/* NEXT STEPS */}
-      {answer.nextSteps.length > 0 && (
-        <section className="space-y-2">
-          <SectionLabel>NEXT STEPS</SectionLabel>
-          <ol className="space-y-2 text-[13px] text-[#2a1c12]">
-            {answer.nextSteps.map((step) => (
-              <li key={step.step} className="flex items-start gap-2.5">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/60 font-mono text-[10.5px] font-medium text-[#2a1c12]">
-                  {step.step}
-                </span>
-                <div className="min-w-0 flex-1 leading-relaxed">
-                  <span className="break-words">{step.text}</span>
-                  {step.isFortyEightHours && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded-[2px] border border-[#e2d5c1] bg-[#fff8e7] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[#b54708]">
-                      <Clock className="size-2.5" aria-hidden="true" />
-                      Do this in 48 hours
-                    </span>
-                  )}
+        <div className="mt-5">
+          {(answer.legalPoints.length > 0 || answer.explanation.length > 0 || extraCitations.length > 0) && (
+            <AnswerDetails title="Legal explanation and sources">
+              {answer.explanation.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+              {answer.legalPoints.map((point, index) => (
+                <div key={index} className="max-w-[65ch] space-y-1.5 border-l-2 border-[#c5a578] pl-3">
+                  <p>{point.explanation}</p>
+                  <CitationChip citation={point.citation} />
                 </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+              ))}
+              {extraCitations.map((citation) => <CitationChip key={citation.id} citation={citation} />)}
+            </AnswerDetails>
+          )}
+          {[
+            { title: "Documents to gather", items: answer.documentsToGather },
+            { title: "Details to confirm", items: answer.factsToConfirm },
+          ].map(({ title, items }) => items.length > 0 && (
+            <AnswerDetails key={title} title={title}>
+              <ul className="list-disc space-y-2 pl-5 marker:text-[#966931]">
+                {items.map((item, index) => <li key={index}>{item}</li>)}
+              </ul>
+            </AnswerDetails>
+          ))}
+        </div>
 
-      {/* DEADLINES — statutory calculator with its required basis note. */}
-      {activeDeadlines && (
-        <section className="space-y-2">
-          <SectionLabel>DEADLINES</SectionLabel>
-          <div className="space-y-3 rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/25 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e2d5c1]/60 pb-2">
-              <div className="flex items-center gap-2">
-                <CalendarClock className="size-4 text-[#b54708]" aria-hidden="true" />
-                <span className="text-xs font-medium text-[#2a1c12]">
-                  Section 138 statutory limitation calculator
-                </span>
-              </div>
+        {answer.followUpChips && answer.followUpChips.length > 0 && (
+          <AnswerDetails title="Follow-up questions">
+            <div className="flex flex-wrap gap-2">
+              {answer.followUpChips.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => onFollowUpClick(chip)}
+                  className="rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/30 px-3 py-1 text-xs text-[#5b4a3b] hover:border-[#9a6a35] hover:text-[#2a1c12] transition-colors cursor-pointer"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </AnswerDetails>
+        )}
+        <AnswerDetails title="Answer tools">
+          <div className="pt-2 border-t border-[#e2d5c1]/60 flex flex-wrap items-center justify-between gap-1 text-xs">
+            <div className="flex flex-wrap items-center gap-1">
               <Button
                 size="sm"
-                variant="primary"
+                variant="ghost"
                 onClick={() => {
-                  onAddToDeadlines(
-                    "Sec 138 Legal Notice Due",
-                    activeDeadlines.noticeDueDate
-                  );
-                  onShowToast(
-                    `Added to Court Deadlines: Notice due ${activeDeadlines.noticeDueDate}`
-                  );
+                  onSaveToCases(answer.decisionBadge, answer.oneLineSummary);
+                  onShowToast("Saved matter summary to My Cases");
                 }}
-                className="min-h-10 px-2.5 text-[11px] sm:min-h-8"
+                className="h-8 text-[11px] px-2 text-[#5b4a3b]"
               >
-                Add to Court Deadlines
+                <FolderPlus className="size-3.5 mr-1" aria-hidden="true" />
+                Save to My Cases
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowCaseBrief((v) => !v);
+                  setShowAdvocates(false);
+                }}
+                className={cn("h-8 text-[11px] px-2 text-[#5b4a3b]", showCaseBrief && "bg-[#ebe1d1]/60 text-[#2a1c12]")}
+              >
+                <Share2 className="size-3.5 mr-1 text-[#9a6a35]" aria-hidden="true" />
+                Prepare case brief
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowAdvocates((v) => !v);
+                  setShowCaseBrief(false);
+                }}
+                className={cn("h-8 text-[11px] px-2 text-[#5b4a3b]", showAdvocates && "bg-[#ebe1d1]/60 text-[#2a1c12]")}
+              >
+                <Scale className="size-3.5 mr-1 text-[#9a6a35]" aria-hidden="true" />
+                Find advocate
               </Button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              <label
-                htmlFor={`memoDateInput-${answer.id}`}
-                className="font-medium text-[#5b4a3b]"
+            <div className="flex items-center gap-0.5 text-[#85725f]">
+              <button
+                type="button"
+                onClick={handleCopy}
+                aria-label="Copy answer"
+                className="grid size-8 place-items-center rounded-[2px] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12] transition-colors"
               >
-                Bank memo date:
-              </label>
-              <input
-                id={`memoDateInput-${answer.id}`}
-                type="date"
-                value={memoDate}
-                onChange={(event) => setMemoDate(event.target.value)}
-                className="h-10 rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] px-2.5 font-mono text-xs text-[#2a1c12] focus:border-[#9a6a35] focus:outline-none focus:ring-1 focus:ring-[#9a6a35] sm:h-8"
-              />
+                {copied ? <Check className="size-3.5 text-[#2e7d32]" /> : <Copy className="size-3.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedback("up");
+                  onShowToast("Feedback recorded: Helpful");
+                }}
+                aria-label="Helpful"
+                className={cn(
+                  "grid size-8 place-items-center rounded-[2px] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12] transition-colors",
+                  feedback === "up" && "text-[#2e7d32]"
+                )}
+              >
+                <ThumbsUp className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedback("down");
+                  onShowToast("Feedback recorded: Needs revision");
+                }}
+                aria-label="Not helpful"
+                className={cn(
+                  "grid size-8 place-items-center rounded-[2px] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12] transition-colors",
+                  feedback === "down" && "text-[#c0392b]"
+                )}
+              >
+                <ThumbsDown className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFlagInput((v) => !v)}
+                aria-label="Flag an error"
+                className="grid size-8 place-items-center rounded-[2px] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12] transition-colors"
+                title="Flag an error"
+              >
+                <Flag className="size-3.5" />
+              </button>
             </div>
-
-            <div className="grid grid-cols-1 gap-2 pt-1 text-xs sm:grid-cols-3">
-              {[
-                ["1. Notice Due (+30 days)", activeDeadlines.noticeDueDate],
-                ["2. Payment Window (+15 days)", activeDeadlines.paymentWindowEndDate],
-                ["3. Complaint Due (+30 days)", activeDeadlines.complaintDueDate],
-              ].map(([label, date]) => (
-                <div
-                  key={label}
-                  className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-2.5"
-                >
-                  <span className="block text-[10px] font-medium uppercase tracking-[0.08em] text-[#85725f]">
-                    {label}
-                  </span>
-                  <span className="mt-0.5 block break-words font-mono text-xs font-medium text-[#2a1c12]">
-                    {date}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-[10.5px] leading-relaxed text-[#85725f]">
-              {activeDeadlines.statutoryNote} Requires review by an empanelled advocate.
-            </p>
           </div>
-        </section>
-      )}
 
-      {/* SOURCES — collapsed by default. */}
-      <SourcesAccordion
-        citations={answer.citations}
-        reviewedDate={answer.sourcesReviewedDate}
-        open={sourcesOpen}
-        onToggle={() => setSourcesOpen((value) => !value)}
-      />
+        </AnswerDetails>
 
-      {/* ACTIONS */}
-      <ActionBar
-        onSaveToCases={() => {
-          onSaveToCases(answer.decisionBadge, answer.oneLineSummary);
-          onShowToast("Saved matter summary to My Cases");
-        }}
-        briefActive={showCaseBrief}
-        onToggleBrief={() => {
-          setShowCaseBrief((value) => !value);
-          setShowAdvocates(false);
-        }}
-        advocatesActive={showAdvocates}
-        onToggleAdvocates={() => {
-          setShowAdvocates((value) => !value);
-          setShowCaseBrief(false);
-        }}
-        copied={copied}
-        onCopy={handleCopy}
-        feedback={feedback}
-        onFeedback={(value) => {
-          setFeedback(value);
-          onShowToast(
-            value === "up" ? "Feedback recorded: Helpful" : "Feedback recorded: Needs revision"
-          );
-        }}
-        flagActive={showFlagInput}
-        onToggleFlag={() => setShowFlagInput((value) => !value)}
-      />
+        {/* Flag Error Inline Form */}
+        {showFlagInput && (
+          <FlagErrorDialog
+            onClose={() => setShowFlagInput(false)}
+            onSubmitFlag={() => {
+              setShowFlagInput(false);
+              onShowToast("Sent to reviewing advocates");
+            }}
+          />
+        )}
+      </div>
 
-      {showFlagInput && (
-        <FlagErrorDialog
-          onClose={() => setShowFlagInput(false)}
-          onSubmitFlag={() => {
-            setShowFlagInput(false);
-            onShowToast("Sent to reviewing advocates");
-          }}
-        />
-      )}
-
+      {/* Inline Case Brief Flow */}
       {showCaseBrief && (
         <CaseBriefFlow
           onClose={() => setShowCaseBrief(false)}
@@ -401,6 +332,7 @@ export function AssistantAnswerCard({
         />
       )}
 
+      {/* Inline Advocate Matches */}
       {showAdvocates && (
         <AdvocateMatchInline
           onClose={() => setShowAdvocates(false)}
@@ -411,8 +343,7 @@ export function AssistantAnswerCard({
         />
       )}
 
-      {/* FOLLOW-UPS — up to three quiet pills. */}
-      {followUpRow}
+
     </div>
   );
 }
