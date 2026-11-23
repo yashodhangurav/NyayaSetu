@@ -36,7 +36,7 @@ export function ScanExplainResultCard({
           </span>
           <div className="min-w-0">
             <h3 className="font-serif text-[17px] font-normal leading-snug text-[#2a1c12]">
-              Scan &amp; Explain analysis
+              Scan &amp; Explain Analysis
             </h3>
             <p className="mt-1 break-words text-[11px] leading-relaxed text-[#85725f]">
               <span className="font-mono text-[#2a1c12]">{result.fileName}</span> ({result.fileSize}) ·
