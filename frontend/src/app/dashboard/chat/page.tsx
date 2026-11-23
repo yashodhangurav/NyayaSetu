@@ -83,11 +83,14 @@ function ChatContent() {
   };
 
   useEffect(() => {
-    if (isThinking || isNearBottom()) {
-      const timeout = setTimeout(() => scrollToBottom("smooth"), 40);
-      return () => clearTimeout(timeout);
-    }
-    setShowJumpToLatest(true);
+    const timeout = setTimeout(() => {
+      if (isThinking || isNearBottom()) {
+        scrollToBottom("smooth");
+      } else {
+        setShowJumpToLatest(true);
+      }
+    }, 40);
+    return () => clearTimeout(timeout);
   }, [turns, isThinking, streamingTurnId, activeScanResult]);
 
   // Handle new conversation
