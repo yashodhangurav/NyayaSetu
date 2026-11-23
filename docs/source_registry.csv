@@ -1,0 +1,41 @@
+source_id,name,tier,url,licence_or_terms,format,last_fetched,status
+SRC_CONST_001,Constitution of India 1950,Tier 1,https://www.indiacode.nic.in/handle/123456789/2263,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_BNS_001,Bharatiya Nyaya Sanhita 2023 (Act No. 45 of 2023),Tier 1,https://www.indiacode.nic.in/handle/123456789/20062,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_BNSS_001,Bharatiya Nagarik Suraksha Sanhita 2023 (Act No. 46 of 2023),Tier 1,https://www.indiacode.nic.in/handle/123456789/20063,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_BSA_001,Bharatiya Sakshya Adhiniyam 2023 (Act No. 47 of 2023),Tier 1,https://www.indiacode.nic.in/handle/123456789/20064,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_IPC_REPEALED,Indian Penal Code 1860 (Repealed by BNS 2023),Tier 1,https://www.indiacode.nic.in/handle/123456789/2263,Repealed Statute (Historical Mapping),PDF/HTML,2026-11-20,REPEALED_IN_FORCE_FALSE
+SRC_CRPC_REPEALED,Code of Criminal Procedure 1973 (Repealed by BNSS 2023),Tier 1,https://www.indiacode.nic.in/handle/123456789/16225,Repealed Statute (Historical Mapping),PDF/HTML,2026-11-20,REPEALED_IN_FORCE_FALSE
+SRC_IEA_REPEALED,Indian Evidence Act 1872 (Repealed by BSA 2023),Tier 1,https://www.indiacode.nic.in/handle/123456789/2188,Repealed Statute (Historical Mapping),PDF/HTML,2026-11-20,REPEALED_IN_FORCE_FALSE
+SRC_CPA_001,Consumer Protection Act 2019 (Act No. 35 of 2019),Tier 1,https://www.indiacode.nic.in/handle/123456789/15256,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_TPA_001,Transfer of Property Act 1882 (Act No. 4 of 1882),Tier 1,https://www.indiacode.nic.in/handle/123456789/2338,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_REG_001,Registration Act 1908 (Act No. 16 of 1908),Tier 1,https://www.indiacode.nic.in/handle/123456789/2347,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_STAMP_001,Indian Stamp Act 1899 (Act No. 2 of 1899),Tier 1,https://www.indiacode.nic.in/handle/123456789/2341,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_ICA_001,Indian Contract Act 1872 (Act No. 9 of 1872),Tier 1,https://www.indiacode.nic.in/handle/123456789/2187,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_NIA_001,Negotiable Instruments Act 1881 (Act No. 26 of 1881),Tier 1,https://www.indiacode.nic.in/handle/123456789/2189,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_LIM_001,Limitation Act 1963 (Act No. 36 of 1963),Tier 1,https://www.indiacode.nic.in/handle/123456789/1572,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_HMA_001,Hindu Marriage Act 1955 (Act No. 25 of 1955),Tier 1,https://www.indiacode.nic.in/handle/123456789/1567,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_HSA_001,Hindu Succession Act 1956 (Act No. 30 of 1956),Tier 1,https://www.indiacode.nic.in/handle/123456789/1569,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_SMA_001,Special Marriage Act 1954 (Act No. 43 of 1954),Tier 1,https://www.indiacode.nic.in/handle/123456789/1564,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_PWDVA_001,Protection of Women from Domestic Violence Act 2005 (Act No. 43 of 2005),Tier 1,https://www.indiacode.nic.in/handle/123456789/2021,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_RTI_001,Right to Information Act 2005 (Act No. 22 of 2005),Tier 1,https://www.indiacode.nic.in/handle/123456789/2065,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_DPDP_001,Digital Personal Data Protection Act 2023 (Act No. 22 of 2023),Tier 1,https://www.meity.gov.in/content/digital-personal-data-protection-act-2023,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_IT_001,Information Technology Act 2000 (Act No. 21 of 2000),Tier 1,https://www.indiacode.nic.in/handle/123456789/1999,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_POSH_001,Sexual Harassment of Women at Workplace (POSH) Act 2013 (Act No. 14 of 2013),Tier 1,https://www.indiacode.nic.in/handle/123456789/2104,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_RERA_001,Real Estate (Regulation and Development) Act 2016,Tier 1,https://www.indiacode.nic.in/handle/123456789/2158,Official Gazette / Public Domain,PDF/HTML,2026-11-20,ACTIVE
+SRC_KAR_RENT_001,Karnataka Rent Act 1999 (Karnataka Act No. 34 of 2001),Tier 2,https://dpal.karnataka.gov.in/storage/pdf-files/Acts/34of2001(E).pdf,Karnataka Gazette / Law Department,PDF/HTML,2026-11-20,ACTIVE
+SRC_KAR_REV_001,Karnataka Land Revenue Act 1964 (Karnataka Act No. 12 of 1964),Tier 2,https://dpal.karnataka.gov.in/storage/pdf-files/Acts/12of1964(E).pdf,Karnataka Gazette / Law Department,PDF/HTML,2026-11-20,ACTIVE
+SRC_KAR_REFORMS_001,Karnataka Land Reforms Act 1961 (Karnataka Act No. 10 of 1962),Tier 2,https://dpal.karnataka.gov.in/storage/pdf-files/Acts/10of1962(E).pdf,Karnataka Gazette / Law Department,PDF/HTML,2026-11-20,ACTIVE
+SRC_KAR_BHOOMI_001,Karnataka Bhoomi RTC & Mutation Citizen Procedure 2024,Tier 2,https://landrecords.karnataka.gov.in/service2/,Revenue Dept Karnataka / Citizen Portal,HTML,2026-11-20,ACTIVE
+SRC_KAR_HC_001,High Court of Karnataka Rules and Practice Directions,Tier 2,https://karnatakajudiciary.kar.nic.in/rules.php,Official Court Rules / Public Domain,PDF,2026-11-20,ACTIVE
+SRC_KSLSA_001,Karnataka State Legal Services Authority Citizen Charter,Tier 2,https://kslsa.kar.nic.in/,Official Authority / Public Domain,HTML/PDF,2026-11-20,ACTIVE
+SRC_PROC_FIR_001,FIR & Zero FIR Registration SOP & Remedies (Section 173 BNSS),Tier 3,https://bprd.nic.in/content/standard-operating-procedures,BPR&D Standard Operating Procedure,HTML,2026-11-20,ACTIVE
+SRC_PROC_EDAAKHIL_001,National Consumer Disputes Redressal e-Daakhil Filing Manual,Tier 3,https://edaakhil.nic.in/,Consumer Affairs Department / NIC,HTML/PDF,2026-11-20,ACTIVE
+SRC_PROC_ARREST_001,DK Basu Mandatory Arrest & Custody Safeguards Guidelines,Tier 3,https://nhrc.nic.in/guidelines-arrest-and-detention,NHRC & Supreme Court Guidelines,HTML,2026-11-20,ACTIVE
+SRC_PROC_NALSA_001,NALSA Citizen Free Legal Aid Schemes & Helpline 15100 SOP,Tier 3,https://nalsa.gov.in/schemes,National Legal Services Authority,HTML,2026-11-23,ACTIVE
+SRC_CASE_DKBASU_001,D.K. Basu v. State of West Bengal (1997) 1 SCC 416 Summary,Tier 4,https://main.sci.gov.in/judgment,Supreme Court Landmark Judgment,HTML,2026-11-20,ACTIVE
+SRC_CASE_ARNESH_001,Arnesh Kumar v. State of Bihar (2014) 8 SCC 273 Summary,Tier 4,https://main.sci.gov.in/judgment,Supreme Court Landmark Judgment,HTML,2026-11-20,ACTIVE
+SRC_CASE_MANEKA_001,Maneka Gandhi v. Union of India (1978) 1 SCC 248 Summary,Tier 4,https://main.sci.gov.in/judgment,Supreme Court Landmark Judgment,HTML,2026-11-20,ACTIVE
+SRC_CASE_PUTTASWAMY_001,K.S. Puttaswamy v. Union of India (2017) 10 SCC 1 Summary,Tier 4,https://main.sci.gov.in/judgment,Supreme Court Landmark Judgment,HTML,2026-11-20,ACTIVE
+SRC_CASE_DASHRATH_001,Dashrath Rupsingh Rathod v. State of Maharashtra (2014) 9 SCC 129 Summary,Tier 4,https://main.sci.gov.in/judgment,Supreme Court Landmark Judgment,HTML,2026-11-20,ACTIVE
+SRC_REV_MAPPING_001,IPC-CrPC-IEA to BNS-BNSS-BSA Concordance Mapping Table 2024,Tier 5,https://nyayasetu.in/internal/concordance,NyayaSetu Empirical Legal Research Team,JSON/CSV,2026-11-20,ACTIVE
+SRC_REV_GLOSSARY_001,Trilingual Legal Terminology Glossary (English-Kannada-Hindi),Tier 5,https://nyayasetu.in/internal/glossary,NyayaSetu Editorial & Legal Linguists,JSON/CSV,2026-11-20,ACTIVE
