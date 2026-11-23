@@ -27,12 +27,12 @@ export function ChatComposer({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
-  // Auto-grow textarea
+  // Grow with the text up to roughly six lines.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    const nextHeight = Math.min(el.scrollHeight, 180);
+    const nextHeight = Math.min(el.scrollHeight, 160);
     el.style.height = `${Math.max(nextHeight, 44)}px`;
   }, [input]);
 
@@ -41,16 +41,15 @@ export function ChatComposer({
     let timer: NodeJS.Timeout;
     if (isRecording) {
       timer = setInterval(() => {
-        setRecordingSeconds((s) => {
-          if (s >= 2) {
-            // Finish recording and populate mock transcript
+        setRecordingSeconds((seconds) => {
+          if (seconds >= 2) {
             setIsRecording(false);
             const mockTranscript =
               "My landlord has not returned my security deposit of ₹60,000 after I vacated the tenancy in Belagavi.";
             onVoiceTranscript(mockTranscript, "English (India) · ಧ್ವನಿ ಗುರುತಿಸಲಾಗಿದೆ");
             return 0;
           }
-          return s + 1;
+          return seconds + 1;
         });
       }, 1000);
     }
@@ -66,50 +65,45 @@ export function ChatComposer({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       if (input.trim() && !streaming) {
         onSend(input);
       }
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       onAttachFile(file);
-      e.target.value = "";
+      event.target.value = "";
     }
   };
 
+  const iconButton =
+    "grid size-10 shrink-0 place-items-center rounded-[2px] text-[#85725f] transition-colors hover:bg-[#ebe1d1]/60 hover:text-[#2a1c12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9a6a35] active:bg-[#e2d5c1] sm:size-9";
+
   return (
     <div className="w-full">
-      {/* Voice Recording Active Waveform Indicator */}
       {isRecording && (
-        <div className="mb-2 flex items-center justify-between rounded-[2px] border border-[#c0392b]/40 bg-[#fdf2f0] px-3.5 py-2 text-xs text-[#c0392b] animate-in-up">
+        <div className="mb-2 flex items-center justify-between rounded-[2px] border border-[#b54708]/40 bg-[#fff8e7] px-3.5 py-2 text-xs text-[#b54708]">
           <div className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-[#c0392b] animate-ping" />
-            <span className="font-semibold">Recording audio ({recordingSeconds}s)...</span>
-            <div className="flex items-center gap-0.5 ml-1" aria-hidden="true">
-              <span className="h-3 w-1 bg-[#c0392b] animate-pulse" />
-              <span className="h-4 w-1 bg-[#c0392b] animate-pulse delay-75" />
-              <span className="h-2 w-1 bg-[#c0392b] animate-pulse delay-150" />
-              <span className="h-5 w-1 bg-[#c0392b] animate-pulse delay-100" />
-              <span className="h-3 w-1 bg-[#c0392b] animate-pulse delay-200" />
-            </div>
+            <span className="size-2 rounded-full bg-[#b54708] motion-safe:animate-pulse" />
+            <span className="font-medium">Recording audio ({recordingSeconds}s)...</span>
           </div>
           <button
             type="button"
             onClick={() => setIsRecording(false)}
-            className="flex items-center gap-1 font-semibold text-[11px] hover:underline"
+            className="inline-flex min-h-10 items-center gap-1 font-medium hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9a6a35] sm:min-h-8"
           >
-            <Square className="size-3 fill-current" /> Stop
+            <Square className="size-3 fill-current" aria-hidden="true" />
+            Stop
           </button>
         </div>
       )}
 
-      {/* Hidden File Input for Scan & Explain */}
       <input
         ref={fileInputRef}
         type="file"
@@ -118,49 +112,43 @@ export function ChatComposer({
         onChange={handleFileChange}
       />
 
-      {/* Composer Input Box */}
-      <div className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-1.5 shadow-[0_1px_2px_rgba(42,28,18,0.04)] transition-all focus-within:border-[#9a6a35] focus-within:ring-1 focus-within:ring-[#9a6a35]">
+      {/* One container, one focus ring, no extra borders. */}
+      <div className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-1.5 shadow-[0_1px_2px_rgba(42,28,18,0.04)] transition-colors focus-within:border-[#9a6a35] focus-within:ring-1 focus-within:ring-[#9a6a35]">
         <div className="flex items-end gap-1.5">
-          {/* Scan & Explain File Attach */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             aria-label="Scan & Explain document"
             title="Scan & Explain (PDF, notice, agreement)"
-            className="grid size-9 shrink-0 place-items-center rounded-[2px] text-[#85725f] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12] transition-colors cursor-pointer"
+            className={iconButton}
           >
             <Paperclip className="size-4" aria-hidden="true" />
           </button>
 
-          {/* Auto-growing Textarea */}
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(event) => setInput(event.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
             placeholder="Describe your problem in any language..."
             aria-label="Describe your problem in any language"
-            className="max-h-44 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2.5 text-xs sm:text-sm leading-relaxed text-[#2a1c12] placeholder:text-[#85725f]/60 focus:outline-none"
+            className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 text-[13px] leading-relaxed text-[#2a1c12] placeholder:text-[#85725f]/60 focus:outline-none sm:text-sm"
           />
 
-          {/* Voice Input Mic */}
           <button
             type="button"
             onClick={toggleRecording}
             aria-label={isRecording ? "Stop voice recording" : "Voice input"}
             title="Speak your legal inquiry (simulates speech-to-text)"
             className={cn(
-              "grid size-9 shrink-0 place-items-center rounded-[2px] transition-colors cursor-pointer",
-              isRecording
-                ? "bg-[#c0392b] text-[#fffaf2]"
-                : "text-[#85725f] hover:bg-[#ebe1d1]/50 hover:text-[#2a1c12]"
+              iconButton,
+              isRecording && "bg-[#b54708] text-[#fffaf2] hover:bg-[#9a3c06] hover:text-[#fffaf2]"
             )}
           >
             <Mic className="size-4" aria-hidden="true" />
           </button>
 
-          {/* Send Button */}
           <Button
             type="button"
             size="sm"
@@ -169,7 +157,7 @@ export function ChatComposer({
               if (input.trim() && !streaming) onSend(input);
             }}
             disabled={!input.trim() || streaming}
-            className="size-9 !px-0 rounded-[2px] shrink-0"
+            className="size-10 shrink-0 !px-0 rounded-[2px] sm:size-9"
             aria-label="Send query"
           >
             <Send className="size-3.5" aria-hidden="true" />
@@ -177,8 +165,7 @@ export function ChatComposer({
         </div>
       </div>
 
-      {/* Static Disclaimer Line beneath - shown once only */}
-      <p className="mt-2 text-center text-[11px] leading-relaxed text-[#85725f]">
+      <p className="mt-2 text-center text-xs leading-relaxed text-[#85725f]">
         Legal information, not legal advice. Confirm with an advocate for your situation.
       </p>
     </div>
