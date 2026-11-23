@@ -33,13 +33,13 @@ NyayaSetu/
 │   │   ├── main.py             ASGI factory, CORS, exception handlers
 │   │   ├── core/               Config, SQLAlchemy async engine, Argon2/JWT security
 │   │   ├── api/v1/             Central API router & health diagnostics
-│   │   ├── modules/            12 cohesive domain packages (routes, services, models)
+│   │   ├── modules/            Domain packages (routes, services, models)
 │   │   ├── integrations/       AI providers, SMS gateways, external adapters
 │   │   └── shared/             Shared pagination models & response schemas
 │   ├── migrations/             Alembic migration revisions (`versions/`) & env.py
 │   ├── scripts/                Operational scripts (`run_dev.sh`, `verify_health.py`)
 │   ├── tests/                  Pytest async integration test suites
-│   ├── docs/                   Detailed API contract and DB specifications
+│   ├── rag/                    Bundled legal corpus, search, ingestion and evaluation
 │   ├── requirements.txt        Pinned Python dependencies
 │   ├── alembic.ini             Alembic configuration
 │   └── run.py                  Uvicorn development server launcher
@@ -67,18 +67,28 @@ There is **no root package manager workspace**. Run frontend commands from `fron
 
 #### Backend Commands
 
+The root `venv/` is generated per operating system and git-ignored; never
+commit it. See [`docs/CROSS_PLATFORM_SETUP.md`](docs/CROSS_PLATFORM_SETUP.md)
+for the one-command bootstrap (`python backend/scripts/bootstrap_env.py`) and
+full Windows commands.
+
 ```bash
 cd backend
 
-# Setup Python 3.12 Virtual Environment
+# Setup Python 3.12 Virtual Environment — macOS / Linux
 python3.12 -m venv ../venv
 source ../venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Setup Python 3.12 Virtual Environment — Windows PowerShell
+# py -3.12 -m venv ..\venv
+# ..\venv\Scripts\Activate.ps1
+
+# Install dependencies (either OS)
+python -m pip install -r requirements.txt
 
 # Environment configuration
 cp .env.example .env
+# Windows PowerShell: Copy-Item .env.example .env
 
 # Database Migrations (PostgreSQL)
 alembic upgrade head
@@ -234,9 +244,16 @@ Before declaring any task or PR complete, execute the verification commands for 
 ### Backend Checks
 ```bash
 cd backend
-source ../venv/bin/activate
+source ../venv/bin/activate      # macOS / Linux
 pytest -v
 python scripts/verify_health.py
+```
+
+```powershell
+cd backend
+..\venv\Scripts\Activate.ps1     # Windows PowerShell
+pytest -v
+python scripts\verify_health.py
 ```
 
 ### Frontend Checks
@@ -260,6 +277,7 @@ When changing behavior, update the matching specification:
 * **System Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 * **Frontend Specifications:** [`docs/FRONTEND.md`](docs/FRONTEND.md)
 * **Development, Setup & Operations:** [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+* **Cross-Platform Commands:** [`docs/CROSS_PLATFORM_SETUP.md`](docs/CROSS_PLATFORM_SETUP.md)
 * **AI/RAG:** [`docs/AI_AND_RAG.md`](docs/AI_AND_RAG.md)
 * **Security, Storage & Compliance:** [`docs/SECURITY_STORAGE_AND_COMPLIANCE.md`](docs/SECURITY_STORAGE_AND_COMPLIANCE.md)
 * **Delivery History/Audits:** [`docs/DELIVERY_RECORD.md`](docs/DELIVERY_RECORD.md)
