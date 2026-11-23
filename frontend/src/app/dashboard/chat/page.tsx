@@ -2,10 +2,11 @@
 
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { PlusCircle, Sparkles } from "lucide-react";
+import { ArrowDown, PlusCircle, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useDashboardUI } from "@/lib/dashboard-ui-context";
 import { Button, PageLoader } from "@/components/dashboard/ui";
+import { cn } from "@/lib/utils";
 import {
   getAssistantAnswer,
   type AssistantAnswer,
@@ -17,6 +18,9 @@ import { AssistantAnswerCard } from "./components/AssistantAnswerCard";
 import { ChatComposer } from "./components/ChatComposer";
 import { ScanExplainResultCard } from "./components/ScanExplainResultCard";
 import { Toast, type ToastMessage } from "./components/Toast";
+import { BrandMark } from "./components/primitives/BrandMark";
+import { SectionLabel } from "./components/primitives/SectionLabel";
+import styles from "./chat.module.css";
 
 interface ChatTurn {
   id: string;
@@ -50,6 +54,7 @@ function ChatContent() {
   const [streamingTurnId, setStreamingTurnId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [activeScanResult, setActiveScanResult] = useState<ScanExplainResult | null>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
@@ -63,23 +68,26 @@ function ChatContent() {
     });
   };
 
-  // Robust internal auto-scroll that only scrolls the message list
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+  // Only follow the conversation when the reader is already near the bottom.
+  const isNearBottom = () => {
     const el = messagesContainerRef.current;
-    if (el) {
-      el.scrollTo({
-        top: el.scrollHeight,
-        behavior,
-      });
-    }
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
   };
 
-  // Scroll to latest message smoothly whenever turns or thinking state changes
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+    setShowJumpToLatest(false);
+  };
+
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      scrollToBottom("smooth");
-    }, 40);
-    return () => clearTimeout(timeout);
+    if (isThinking || isNearBottom()) {
+      const timeout = setTimeout(() => scrollToBottom("smooth"), 40);
+      return () => clearTimeout(timeout);
+    }
+    setShowJumpToLatest(true);
   }, [turns, isThinking, streamingTurnId, activeScanResult]);
 
   // Handle new conversation
@@ -89,6 +97,7 @@ function ChatContent() {
     setIsThinking(false);
     setStreamingTurnId(null);
     setActiveScanResult(null);
+    setShowJumpToLatest(false);
     showToast("Started new consultation session");
   };
 
@@ -114,7 +123,6 @@ function ChatContent() {
 
     // Activate thinking state
     setIsThinking(true);
-    setTimeout(() => scrollToBottom("smooth"), 50);
 
     try {
       // Fetch assistant response from typed mock service (600-900ms delay)
@@ -151,9 +159,8 @@ function ChatContent() {
               : t
           )
         );
-        scrollToBottom("instant");
         // Short token delay
-        await new Promise((r) => setTimeout(r, 40));
+        await new Promise((r) => setTimeout(r, 45));
       }
 
       // Finalize turn
@@ -164,11 +171,6 @@ function ChatContent() {
             : t
         )
       );
-
-      // Final smooth scroll to show full structured result card
-      setTimeout(() => {
-        scrollToBottom("smooth");
-      }, 100);
     } catch {
       setIsThinking(false);
       showToast("Unable to process statutory inquiry. Please retry.", "warn");
@@ -214,7 +216,6 @@ function ChatContent() {
 
     setActiveScanResult(mockResult);
     showToast(`Scanned and analyzed ${name}`);
-    setTimeout(() => scrollToBottom("smooth"), 100);
   };
 
   // Handle Voice input transcript
@@ -252,12 +253,9 @@ function ChatContent() {
 
   return (
     <>
-      {/* Scoped CSS ensuring the chat window remains stationary like ChatGPT/Claude */}
+      {/* Keep the page stationary on this route: only the conversation scrolls. */}
       <style>{`
-        /* Keep page stationary on chat route: only message container scrolls */
-        body:has(#chat-agent-root) {
-          overflow: hidden !important;
-        }
+        body:has(#chat-agent-root) { overflow: hidden !important; }
         body:has(#chat-agent-root) #main-content {
           padding-top: 0.75rem !important;
           padding-bottom: 0 !important;
@@ -267,34 +265,29 @@ function ChatContent() {
           height: calc(100dvh - 128px) !important;
         }
         @media (min-width: 1024px) {
-          body:has(#chat-agent-root) #main-content {
-            height: calc(100dvh - 64px) !important;
-          }
+          body:has(#chat-agent-root) #main-content { height: calc(100dvh - 64px) !important; }
         }
         body:has(#chat-agent-root) #main-content > div {
           height: 100% !important;
           display: flex !important;
           flex-direction: column !important;
         }
-        body:has(#chat-agent-root) footer:not(#composer-container) {
-          display: none !important;
-        }
+        body:has(#chat-agent-root) footer:not(#composer-container) { display: none !important; }
       `}</style>
 
       <div
         id="chat-agent-root"
-        className="relative flex flex-col h-full max-w-[760px] mx-auto w-full px-2 sm:px-4 select-none animate-fade"
+        className="relative flex h-full w-full max-w-[720px] flex-col animate-fade mx-auto px-2 sm:px-4"
       >
-        {/* Toast Notification Container */}
         <Toast toast={toast} onDismiss={() => setToast(null)} />
 
-        {/* 1. Header: Stationary Title in Gambetta serif + small ghost "New chat" button */}
-        <header className="shrink-0 flex items-center justify-between pb-3.5 border-b border-[#e2d5c1]">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-8.5 place-items-center rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/50 text-[#9a6a35]">
+        {/* Serif title + ghost "New chat", closed by a thin divider. */}
+        <header className="flex shrink-0 select-none items-center justify-between gap-3 border-b border-[#e2d5c1] pb-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-[2px] border border-[#e2d5c1] bg-[#ebe1d1]/50 text-[#9a6a35]">
               <Sparkles className="size-4" aria-hidden="true" />
             </span>
-            <h1 className="font-serif text-[22px] sm:text-[26px] font-normal tracking-tight text-[#2a1c12] leading-none">
+            <h1 className="truncate font-serif text-[22px] font-normal leading-none tracking-tight text-[#2a1c12] sm:text-[26px]">
               AI Legal Assistant
             </h1>
           </div>
@@ -303,112 +296,135 @@ function ChatContent() {
             size="sm"
             variant="ghost"
             onClick={handleNewChat}
-            className="h-8 text-xs text-[#5b4a3b] hover:text-[#2a1c12] hover:bg-[#ebe1d1]/50 rounded-[2px]"
+            className="h-10 min-h-10 shrink-0 rounded-[2px] text-xs text-[#5b4a3b] hover:text-[#2a1c12] hover:bg-[#ebe1d1]/60 sm:h-8 sm:min-h-8"
             aria-label="Start new consultation chat"
           >
-            <PlusCircle className="size-3.5 mr-1 text-[#9a6a35]" aria-hidden="true" />
+            <PlusCircle className="mr-1 size-3.5 text-[#9a6a35]" aria-hidden="true" />
             New chat
           </Button>
         </header>
 
-        {/* 2. Scrollable Messages Area: ONLY this element scrolls! */}
-        <div
-          ref={messagesContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto py-5 space-y-6 pr-1 select-text scroll-smooth"
-          aria-live="polite"
-        >
-          {turns.length === 0 && !isThinking ? (
-            <EmptyState
-              userName={user?.name?.split(" ")[0]}
-              onSelectPrompt={(p) => void handleSend(p)}
-            />
-          ) : (
-            <div className="space-y-6">
-              {turns.map((turn) => {
-                if (turn.role === "user") {
-                  return (
-                    <div key={turn.id} className="flex justify-end gap-2.5 animate-in-up">
-                      <div className="max-w-[88%] sm:max-w-[80%]">
-                        <div className="rounded-[2px] bg-[#2a1c12] px-4.5 py-3.5 text-xs sm:text-[13.5px] leading-relaxed text-[#fffaf2] shadow-xs select-text">
-                          {turn.userText}
-                        </div>
-                        <div className="mt-1 flex items-center justify-end gap-1.5 text-[10.5px] font-mono text-[#85725f]">
-                          <span className="size-1.5 rounded-full bg-[#2e7d32]" aria-hidden="true" />
-                          Delivered
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (turn.role === "assistant" && turn.assistantAnswer) {
-                  // Streaming transition state
-                  if (turn.isStreaming) {
+        {/* Only this region scrolls, with soft cream fades at both ends. */}
+        <div className={styles.conversationRegion}>
+          <div
+            ref={messagesContainerRef}
+            onScroll={() => setShowJumpToLatest(!isNearBottom())}
+            className={cn(styles.scrollArea, "select-text")}
+            aria-live="polite"
+          >
+            {turns.length === 0 && !isThinking ? (
+              <EmptyState
+                userName={user?.name?.split(" ")[0]}
+                onSelectPrompt={(p) => void handleSend(p)}
+              />
+            ) : (
+              <div className="space-y-8">
+                {turns.map((turn) => {
+                  if (turn.role === "user") {
                     return (
-                      <div key={turn.id} className="space-y-3 animate-in-up">
-                        <div className="rounded-[2px] border border-[#e2d5c1] bg-[#fffaf2] p-5 shadow-xs space-y-3">
-                          <div className="h-5 w-28 rounded-[2px] bg-[#ebe1d1]/60 animate-pulse" />
-                          <p className="font-serif text-[17px] sm:text-[19px] font-normal leading-snug text-[#2a1c12]">
-                            {turn.streamedText}
-                            <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-[#9a6a35] align-middle" />
-                          </p>
+                      <div key={turn.id} className={cn(styles.fadeIn, "flex justify-end")}>
+                        <div
+                          className={cn(
+                            styles.userBubble,
+                            "max-w-[88%] px-4 py-3 text-[13px] leading-relaxed sm:max-w-[80%]"
+                          )}
+                        >
+                          {turn.userText}
                         </div>
                       </div>
                     );
                   }
 
-                  // Fully populated structured answer anatomy
-                  return (
-                    <AssistantAnswerCard
-                      key={turn.id}
-                      answer={turn.assistantAnswer}
-                      onSaveToCases={handleSaveToCases}
-                      onAddToDeadlines={handleAddToDeadlines}
-                      onRequestConsultation={handleRequestConsultation}
-                      onFollowUpClick={(prompt) => void handleSend(prompt)}
-                      onShowToast={(msg) => showToast(msg)}
-                    />
-                  );
-                }
+                  if (turn.role === "assistant" && turn.assistantAnswer) {
+                    // Streaming transition: brand mark + one line, no card.
+                    if (turn.isStreaming) {
+                      return (
+                        <div key={turn.id} className={cn(styles.fadeIn, "space-y-2")}>
+                          <div className="flex items-center gap-2.5">
+                            <BrandMark />
+                            <SectionLabel>SUMMARY</SectionLabel>
+                          </div>
+                          <p className="font-serif text-[17px] font-normal leading-snug text-[#2a1c12] sm:text-[19px]">
+                            {turn.streamedText}
+                            <span
+                              className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-[#9a6a35] align-middle motion-reduce:animate-none"
+                              aria-hidden="true"
+                            />
+                          </p>
+                        </div>
+                      );
+                    }
 
-                return null;
-              })}
+                    // Fully populated structured answer anatomy.
+                    return (
+                      <AssistantAnswerCard
+                        key={turn.id}
+                        answer={turn.assistantAnswer}
+                        onSaveToCases={handleSaveToCases}
+                        onAddToDeadlines={handleAddToDeadlines}
+                        onRequestConsultation={handleRequestConsultation}
+                        onFollowUpClick={(prompt) => void handleSend(prompt)}
+                        onShowToast={(msg) => showToast(msg)}
+                      />
+                    );
+                  }
 
-              {/* Cycling Thinking State while awaiting response */}
-              {isThinking && (
-                <div className="animate-in-up">
-                  <ThinkingState />
-                </div>
-              )}
+                  return null;
+                })}
 
-              {/* Scan & Explain Inline Card Result */}
-              {activeScanResult && (
-                <ScanExplainResultCard
-                  result={activeScanResult}
-                  onClose={() => setActiveScanResult(null)}
-                  onAskFollowUp={(p) => void handleSend(p)}
-                />
-              )}
+                {isThinking && (
+                  <div className={styles.fadeIn}>
+                    <ThinkingState />
+                  </div>
+                )}
 
-              {/* Anchor for auto-scroll tracking */}
-              <div ref={scrollAnchorRef} className="h-2" />
-            </div>
-          )}
+                {activeScanResult && (
+                  <ScanExplainResultCard
+                    result={activeScanResult}
+                    onClose={() => setActiveScanResult(null)}
+                    onAskFollowUp={(p) => void handleSend(p)}
+                  />
+                )}
+
+                <div ref={scrollAnchorRef} className="h-1" />
+              </div>
+            )}
+          </div>
+          <div className={styles.fadeTop} aria-hidden="true" />
+          <div className={styles.fadeBottom} aria-hidden="true" />
         </div>
 
-        {/* 3. Stationary Pinned Composer at Bottom: Never scrolls up! */}
+        {/* Pinned composer with a soft gradient rising above it. */}
         <footer
           id="composer-container"
-          className="shrink-0 pt-2.5 pb-2.5 bg-[#f4efe6] border-t border-[#e2d5c1]/70"
+          className="relative shrink-0 bg-[#f4efe6] pb-2 pt-2.5 pr-14 lg:pr-0"
         >
-          <ChatComposer
-            input={input}
-            setInput={setInput}
-            onSend={(text) => void handleSend(text)}
-            onAttachFile={handleAttachFile}
-            onVoiceTranscript={handleVoiceTranscript}
-            streaming={isThinking || Boolean(streamingTurnId)}
-          />
+          {showJumpToLatest && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-full z-20 flex justify-center pb-2">
+              <button
+                type="button"
+                onClick={() => scrollToBottom("smooth")}
+                className={cn(
+                  styles.jumpPill,
+                  styles.fadeIn,
+                  "pointer-events-auto inline-flex h-10 items-center gap-1.5 px-4 text-xs font-medium"
+                )}
+              >
+                <ArrowDown className="size-3.5" aria-hidden="true" />
+                Jump to latest
+              </button>
+            </div>
+          )}
+          <div className={styles.composerWrap}>
+            <ChatComposer
+              input={input}
+              setInput={setInput}
+              onSend={(text) => void handleSend(text)}
+              onAttachFile={handleAttachFile}
+              onVoiceTranscript={handleVoiceTranscript}
+              streaming={isThinking || Boolean(streamingTurnId)}
+            />
+          </div>
         </footer>
       </div>
     </>
