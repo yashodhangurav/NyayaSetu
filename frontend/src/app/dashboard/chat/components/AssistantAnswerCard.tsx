@@ -63,14 +63,14 @@ export function AssistantAnswerCard({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // Inline panels own their own Escape handling (so a consent modal
+      // closes before the whole brief does).
       if (showFlagInput) setShowFlagInput(false);
       else if (sourcesOpen) setSourcesOpen(false);
-      else if (showCaseBrief) setShowCaseBrief(false);
-      else if (showAdvocates) setShowAdvocates(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showFlagInput, sourcesOpen, showCaseBrief, showAdvocates]);
+  }, [showFlagInput, sourcesOpen]);
 
   const handleCopy = () => {
     const textToCopy = [
