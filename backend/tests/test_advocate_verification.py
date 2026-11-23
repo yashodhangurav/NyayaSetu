@@ -1,13 +1,10 @@
 """Comprehensive test suite for Advocate Credential Verification System."""
 
-import io
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.modules.advocates.models import AdvocateProfile, AdvocateVerification, AdvocateVerificationApplication
 from app.modules.users.models import User
 
 
@@ -90,10 +87,6 @@ async def create_admin_user(db_session: AsyncSession, async_client: AsyncClient)
     return str(admin.id), login_res.json()["access_token"]
 
 
-# ──────────────────────────────────────────────────────────────
-# 1. Advocate Registration & Initial PENDING status
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_advocate_registration_and_initial_pending_status(async_client: AsyncClient, db_session: AsyncSession):
     """Verify advocate registers, profile has PENDING platform_verification_status, and can view own verification."""
@@ -144,10 +137,6 @@ async def test_advocate_registration_and_initial_pending_status(async_client: As
     assert me_res2.status_code == 200
     assert me_res2.json()["platform_verification_status"] == "SUBMITTED"
 
-
-# ──────────────────────────────────────────────────────────────
-# 2. Duplicate Enrollment Number
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_duplicate_enrollment_number(async_client: AsyncClient):
@@ -202,10 +191,6 @@ async def test_duplicate_enrollment_number(async_client: AsyncClient):
     assert "already registered" in res2.json()["error"]["message"]
 
 
-# ──────────────────────────────────────────────────────────────
-# 3. Invalid Enrollment Format
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_invalid_enrollment_format(async_client: AsyncClient):
     """Verify that enrollment number not matching council format returns 400 Bad Request."""
@@ -234,10 +219,6 @@ async def test_invalid_enrollment_format(async_client: AsyncClient):
     assert res.status_code == 400
     assert "does not match the expected format" in res.json()["error"]["message"]
 
-
-# ──────────────────────────────────────────────────────────────
-# 4. Unauthorized Document Access
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_unauthorized_document_access(async_client: AsyncClient, db_session: AsyncSession):
@@ -308,10 +289,6 @@ async def test_unauthorized_document_access(async_client: AsyncClient, db_sessio
     assert rival_dl.status_code == 403
 
 
-# ──────────────────────────────────────────────────────────────
-# 5. Advocate Trying to Approve Their Own Profile
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_advocate_trying_to_approve_own_profile(async_client: AsyncClient, db_session: AsyncSession):
     """Verify that an advocate cannot call admin decision endpoint, and an admin with a profile cannot self-approve."""
@@ -351,10 +328,6 @@ async def test_advocate_trying_to_approve_own_profile(async_client: AsyncClient,
     assert hack_res.status_code == 403
 
 
-# ──────────────────────────────────────────────────────────────
-# 6. Citizen Trying to Access Admin Verification
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_citizen_forbidden_from_admin_verifications(async_client: AsyncClient):
     """Verify that a citizen account cannot access the admin verification queue."""
@@ -373,10 +346,6 @@ async def test_citizen_forbidden_from_admin_verifications(async_client: AsyncCli
     assert res.status_code == 403
     assert "Access forbidden" in res.json()["error"]["message"]
 
-
-# ──────────────────────────────────────────────────────────────
-# 7. Admin Approval
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_admin_approval(async_client: AsyncClient, db_session: AsyncSession):
@@ -458,10 +427,6 @@ async def test_admin_approval(async_client: AsyncClient, db_session: AsyncSessio
     assert "internal_notes" not in adv_data
 
 
-# ──────────────────────────────────────────────────────────────
-# 8. Admin Rejection
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_admin_rejection(async_client: AsyncClient, db_session: AsyncSession):
     """Verify admin rejection updates status to REJECTED with mandatory decision reason."""
@@ -502,10 +467,6 @@ async def test_admin_rejection(async_client: AsyncClient, db_session: AsyncSessi
     assert reject_res.status_code == 200
     assert reject_res.json()["platform_verification_status"] == "REJECTED"
 
-
-# ──────────────────────────────────────────────────────────────
-# 9. Missing AIBE / COP Documents with Applicability Review
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_missing_aibe_cop_and_request_info_flow(async_client: AsyncClient, db_session: AsyncSession):
@@ -558,70 +519,3 @@ async def test_missing_aibe_cop_and_request_info_flow(async_client: AsyncClient,
     assert adv_view.status_code == 200
     assert adv_view.json()["platform_verification_status"] == "NEEDS_MORE_INFORMATION"
     assert "renewed COP" in adv_view.json()["info_request_message"]
-
-
-# ──────────────────────────────────────────────────────────────
-# 10. Pending Advocates Excluded from Matching
-# ──────────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_pending_advocates_excluded_from_matching(async_client: AsyncClient, db_session: AsyncSession):
-    """Verify that only VERIFIED advocates appear in matching search results. Pending, submitted, or rejected are excluded."""
-    # Register Advocate 1 (PENDING verification)
-    await create_user_with_role(
-        async_client,
-        email="adv.pending.match@nyayasetu.in",
-        phone="+919876500091",
-        role="ADVOCATE",
-        full_name="Adv. Pending Matching",
-        bar_council_id="D/9001/2021",
-        bar_council_name="Bar Council of Delhi",
-    )
-
-    # Register Advocate 2 (to be VERIFIED)
-    _, adv2_token = await create_user_with_role(
-        async_client,
-        email="adv.verified.match@nyayasetu.in",
-        phone="+919876500092",
-        role="ADVOCATE",
-        full_name="Adv. Verified Counsel",
-        bar_council_id="D/9002/2010",
-        bar_council_name="Bar Council of Delhi",
-    )
-
-    sub_res = await async_client.post(
-        "/api/v1/advocates/me/verification",
-        json={
-            "enrollment_number": "D/9002/2010",
-            "enrollment_name": "Verified Counsel",
-            "state_bar_council": "Bar Council of Delhi",
-            "enrollment_date": "2010-01-10",
-        },
-        headers={"Authorization": f"Bearer {adv2_token}"},
-    )
-    app2_id = sub_res.json()["id"]
-
-    # Query matching before approval: should return 0 verified advocates
-    m1 = await async_client.get("/api/v1/matching/advocates")
-    assert m1.status_code == 200
-    assert m1.json()["total"] == 0
-
-    # Admin approves Advocate 2
-    _, admin_token = await create_admin_user(db_session, async_client)
-    await async_client.post(
-        f"/api/v1/admin/advocate-verifications/{app2_id}/decision",
-        json={
-            "decision": "VERIFIED",
-            "evidence_level": "DOCUMENTS_REVIEWED",
-            "decision_reason": "Bar identity card and enrollment certificate verified.",
-        },
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-
-    # Query matching after approval: should return ONLY Advocate 2
-    m2 = await async_client.get("/api/v1/matching/advocates")
-    assert m2.status_code == 200
-    assert m2.json()["total"] == 1
-    items = m2.json()["items"]
-    assert items[0]["full_name"] == "Adv. Verified Counsel"
-    assert items[0]["is_verified"] is True

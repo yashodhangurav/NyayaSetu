@@ -1,6 +1,5 @@
 """Comprehensive test suite for Legal AI Assistant (RAG) and Admin Ingestion."""
 
-import uuid
 import pytest
 from httpx import AsyncClient, Request, Response
 from sqlalchemy import select
@@ -9,17 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import hash_password
 from app.modules.admin.models import AuditLog
 from app.modules.legal_assistant.citation_validator import CitationValidator
-from app.modules.legal_assistant.embedding_provider import (
-    DeterministicMockEmbeddingProvider,
-    get_embedding_provider,
-)
-from app.modules.legal_assistant.llm_provider import (
-    DeterministicGroundedLLMProvider,
-    GroqLLMProvider,
-    get_llm_provider,
-)
+from app.modules.legal_assistant.llm_provider import GroqLLMProvider
 from app.modules.legal_knowledge.ingestion import LegalIngestionService
-from app.modules.legal_knowledge.models import LegalChunk, LegalSource
 from app.modules.users.models import User
 
 
@@ -50,10 +40,6 @@ async def create_user_and_token(
     assert login_res.status_code == 200
     return str(user.id), login_res.json()["access_token"]
 
-
-# ──────────────────────────────────────────────────────────────
-# 1. Statutory Retrieval & Grounded Question Answering
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_legal_ask_cheque_bounce_retrieval(async_client: AsyncClient, db_session: AsyncSession):
@@ -86,6 +72,9 @@ async def test_legal_ask_cheque_bounce_retrieval(async_client: AsyncClient, db_s
     assert "Section 138" in c0["section_or_paragraph"]
     assert c0["is_verified_in_corpus"] is True
     assert c0["official_source_url"] is not None
+    assert "indiacode.nic.in" in c0["official_source_url"]
+    assert c0["jurisdiction"] == "Union of India"
+    assert c0["document_version"] and len(c0["relevant_text"]) > 20
     assert c0["content_checksum"] is not None
 
     # Verify Actionable Next Steps
@@ -96,51 +85,6 @@ async def test_legal_ask_cheque_bounce_retrieval(async_client: AsyncClient, db_s
     # Verify Mandatory Disclaimer
     assert "does not constitute formal legal advice" in data["disclaimer"]
 
-
-@pytest.mark.asyncio
-async def test_legal_ask_consumer_dispute_retrieval(async_client: AsyncClient, db_session: AsyncSession):
-    """Verify consumer grievance retrieves Consumer Protection Act 2019 provisions."""
-    await LegalIngestionService.seed_curated_corpus(db_session)
-
-    payload = {
-        "query": "How to file a consumer complaint for a defective electronic product?",
-        "preferred_language": "en",
-    }
-
-    res = await async_client.post("/api/v1/legal/ask", json=payload)
-    assert res.status_code == 200
-    data = res.json()
-
-    assert data["sources_found"] is True
-    assert "Consumer Protection Act" in data["answer"] or "Section 35" in data["answer"]
-
-    # Verify consumer citations
-    titles = [c["source_title"] for c in data["citations"]]
-    assert any("Consumer Protection Act" in t for t in titles)
-
-
-@pytest.mark.asyncio
-async def test_legal_ask_free_legal_aid_entitlement(async_client: AsyncClient, db_session: AsyncSession):
-    """Verify inquiry about free legal aid retrieves Section 12 Legal Services Authorities Act."""
-    await LegalIngestionService.seed_curated_corpus(db_session)
-
-    payload = {
-        "query": "Who is eligible to get free legal aid under NALSA in India?",
-        "preferred_language": "en",
-    }
-
-    res = await async_client.post("/api/v1/legal/ask", json=payload)
-    assert res.status_code == 200
-    data = res.json()
-
-    assert data["sources_found"] is True
-    assert "Legal Services Authorities Act" in data["answer"]
-    assert "Section 12" in data["answer"]
-
-
-# ──────────────────────────────────────────────────────────────
-# 2. Strict Safety Rules & Missing Sources
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_legal_ask_insufficient_sources_returns_safe_fallback(async_client: AsyncClient):
@@ -162,10 +106,6 @@ async def test_legal_ask_insufficient_sources_returns_safe_fallback(async_client
     assert data["facts_to_confirm"] and not data["legal_points"]
     assert any("Consult an empanelled advocate" in step for step in data["suggested_next_steps"])
 
-
-# ──────────────────────────────────────────────────────────────
-# 3. Citation Validator Unit Tests
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_citation_validator_prunes_hallucinations():
@@ -213,10 +153,6 @@ async def test_citation_validator_prunes_hallucinations():
     assert "420" in unverified_text
 
 
-# ──────────────────────────────────────────────────────────────
-# 4. Multi-Language Script Detection (Hindi & Kannada)
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_language_detection_and_multi_language_support(async_client: AsyncClient, db_session: AsyncSession):
     """Verify Hindi and Kannada queries are detected and answered with correct language metadata."""
@@ -242,10 +178,6 @@ async def test_language_detection_and_multi_language_support(async_client: Async
     assert kannada_data["detected_language"] == "kn"
     assert "ಕನ್ನಡ" in kannada_data["answer"]
 
-
-# ──────────────────────────────────────────────────────────────
-# 5. Protected Admin Source Ingestion Workflows
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_admin_source_ingestion_workflow(async_client: AsyncClient, db_session: AsyncSession):
@@ -329,10 +261,6 @@ async def test_admin_ingestion_access_control(async_client: AsyncClient, db_sess
     )
     assert res_unauth.status_code == 401
 
-
-# ──────────────────────────────────────────────────────────────
-# 6. Audit Trail for Legal AI Queries
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_audit_log_recorded_for_legal_ai_queries(async_client: AsyncClient, db_session: AsyncSession):

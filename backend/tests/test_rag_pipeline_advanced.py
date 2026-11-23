@@ -1,20 +1,9 @@
-"""Advanced RAG Pipeline and Grounded Retrieval Test Suite.
-
-Validates:
-1. End-to-end grounded legal question answering across multiple practice domains.
-2. Cross-statute section disambiguation (Section 12 PWDVA vs Section 12 NALSA).
-3. No-source fallback behavior for uncovered domains (safe non-hallucinatory response, missing facts prompt).
-4. Outdated / rejected document filtering.
-5. Multiple relevant statutes retrieval in complex matters.
-6. Citation traceability (official URLs, section identifiers, checksums, verbatim text snippets).
-7. Strict relevance threshold enforcement (rejection of nearest-neighbor noise).
-"""
+"""Source selection, disambiguation and fallback behavior for legal retrieval."""
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.legal_assistant.citation_validator import CitationValidator
 from app.modules.legal_assistant.retrieval import LegalRetrievalEngine
 from app.modules.legal_knowledge.ingestion import LegalIngestionService
 from app.modules.legal_knowledge.models import LegalSource
@@ -22,10 +11,6 @@ from app.modules.legal_knowledge.models import LegalSource
 
 pytestmark = pytest.mark.usefixtures("isolated_embedding_provider")
 
-
-# ──────────────────────────────────────────────────────────────
-# 1. Cross-Statute Section Disambiguation Tests
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_disambiguation_section_12_domestic_violence_vs_legal_aid(db_session: AsyncSession):
@@ -57,10 +42,6 @@ async def test_disambiguation_section_12_domestic_violence_vs_legal_aid(db_sessi
     assert "Section 12" in top_aid["section_number"]
 
 
-# ──────────────────────────────────────────────────────────────
-# 2. Multi-Statute Retrieval Tests
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_multi_statute_retrieval_contract_and_limitation(db_session: AsyncSession):
     """A commercial contract dispute involving delay and limitation should retrieve both ICA and Limitation Act."""
@@ -77,10 +58,6 @@ async def test_multi_statute_retrieval_contract_and_limitation(db_session: Async
     assert any("Indian Contract Act" in t for t in titles)
     assert any("Limitation Act" in t for t in titles)
 
-
-# ──────────────────────────────────────────────────────────────
-# 3. Uncovered Domain / No-Corpus Coverage Tests
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_no_corpus_coverage_safe_fallback(async_client: AsyncClient, db_session: AsyncSession):
@@ -124,45 +101,6 @@ async def test_fabricated_or_invalid_section_numbers(async_client: AsyncClient, 
         assert "9999" not in (cit["section_or_paragraph"] or "")
 
 
-# ──────────────────────────────────────────────────────────────
-# 4. Citation Traceability & Metadata Verification Tests
-# ──────────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_citation_traceability_and_rich_metadata(async_client: AsyncClient, db_session: AsyncSession):
-    """Verified citations must contain Act title, section number, official URL, relevant text, and checksum."""
-    await LegalIngestionService.seed_curated_corpus(db_session)
-
-    res = await async_client.post(
-        "/api/v1/legal/ask",
-        json={
-            "query": "What is the statutory notice period for cheque dishonour under Section 138 of Negotiable Instruments Act?",
-            "preferred_language": "en",
-        },
-    )
-    assert res.status_code == 200
-    data = res.json()
-
-    assert data["sources_found"] is True
-    assert len(data["citations"]) >= 1
-
-    cit = data["citations"][0]
-    assert "Negotiable Instruments Act" in cit["source_title"]
-    assert "Section 138" in cit["section_or_paragraph"]
-    assert cit["official_source_url"] is not None
-    assert "indiacode.nic.in" in cit["official_source_url"]
-    assert cit["jurisdiction"] == "Union of India"
-    assert cit["document_version"] is not None
-    assert cit["relevant_text"] is not None
-    assert len(cit["relevant_text"]) > 20
-    assert cit["content_checksum"] is not None
-    assert cit["is_verified_in_corpus"] is True
-
-
-# ──────────────────────────────────────────────────────────────
-# 5. Outdated and Rejected Source Filtering Tests
-# ──────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_rejected_source_filtered_from_retrieval(db_session: AsyncSession):
     """Sources marked as REJECTED in verification_status must be excluded from retrieval."""
@@ -187,10 +125,6 @@ async def test_rejected_source_filtered_from_retrieval(db_session: AsyncSession)
     )
     assert not any(c["source_title"] == "Repealed Bogus Act" for c in chunks)
 
-
-# ──────────────────────────────────────────────────────────────
-# 6. Relevance Threshold Enforcement Tests
-# ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_relevance_threshold_filters_out_poor_matches(db_session: AsyncSession):

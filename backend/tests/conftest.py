@@ -39,25 +39,26 @@ def isolated_embedding_provider():
     reset_embedding_provider()
 
 
-@pytest_asyncio.fixture(scope="function", autouse=True)
+@pytest_asyncio.fixture
 async def setup_test_database():
-    """Create all tables before each test and drop them after."""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    """Only database clients need a schema. Closing the engine discards the in-memory database."""
+    try:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        yield
+    finally:
+        await test_engine.dispose()
 
 
 @pytest_asyncio.fixture
-async def db_session():
+async def db_session(setup_test_database):
     """Yields a dedicated test database session."""
     async with TestingAsyncSessionLocal() as session:
         yield session
 
 
 @pytest_asyncio.fixture
-async def async_client():
+async def async_client(setup_test_database):
     """Async test client bound to FastAPI application with test database override."""
     async def override_get_db():
         async with TestingAsyncSessionLocal() as session:

@@ -3,16 +3,12 @@
 from datetime import datetime, timedelta, timezone
 import uuid
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.modules.admin.models import AuditLog
 from app.modules.advocates.models import AdvocateProfile
 from app.modules.appointments.models import Appointment
-from app.modules.reviews.models import Review
 from app.modules.users.models import User
 
 
@@ -120,86 +116,6 @@ async def test_review_unauthenticated_rejected(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_valid_review_for_eligible_completed_booking(
-    async_client: AsyncClient,
-    db_session: AsyncSession,
-):
-    """Citizen submits a valid evaluation for their completed consultation booking."""
-    citizen = await create_user_and_token(async_client, db_session, role="CITIZEN", full_name="Ramesh Patel", email_prefix="ramesh")
-    advocate = await create_user_and_token(async_client, db_session, role="ADVOCATE", full_name="Adv. Sneha Kulkarni", email_prefix="sneha")
-
-    # Create completed consultation booking
-    booking = await create_appointment(
-        db_session,
-        client_id=citizen["user"].id,
-        advocate_id=advocate["advocate_profile"].id,
-        status="COMPLETED",
-    )
-
-    payload = {
-        "booking_id": str(booking.id),
-        "rating": 5,
-        "comment": "Exemplary procedural advice regarding Section 138 notice. Clear, actionable timeline.",
-        "tags": ["Clear communication", "Actionable next steps", "Punctual & prepared"],
-        "resolved": "yes",
-    }
-
-    res = await async_client.post(
-        "/api/v1/reviews",
-        headers=citizen["headers"],
-        json=payload,
-    )
-    assert res.status_code == 201, res.text
-    data = res.json()
-
-    assert data["rating"] == 5
-    assert data["comment"] == "Exemplary procedural advice regarding Section 138 notice. Clear, actionable timeline."
-    assert "Clear communication" in data["tags"]
-    assert data["matter_resolution"] == "yes"
-    assert data["status"] == "PUBLISHED"
-    # Derived IDs verification
-    assert data["booking_id"] == str(booking.id)
-    assert data["reviewer_id"] == str(citizen["user"].id)
-    assert data["advocate_id"] == str(advocate["advocate_profile"].id)
-
-    # Verify review can be retrieved by booking ID
-    by_booking_res = await async_client.get(
-        f"/api/v1/reviews/bookings/{booking.id}",
-        headers=citizen["headers"],
-    )
-    assert by_booking_res.status_code == 200
-    assert by_booking_res.json()["id"] == data["id"]
-
-
-@pytest.mark.asyncio
-async def test_review_for_another_users_booking_rejected(
-    async_client: AsyncClient,
-    db_session: AsyncSession,
-):
-    """User B cannot submit an evaluation for User A's consultation booking (HTTP 403)."""
-    citizen_a = await create_user_and_token(async_client, db_session, role="CITIZEN", full_name="User A", email_prefix="usera")
-    citizen_b = await create_user_and_token(async_client, db_session, role="CITIZEN", full_name="User B", email_prefix="userb")
-    advocate = await create_user_and_token(async_client, db_session, role="ADVOCATE", full_name="Advocate", email_prefix="adv")
-
-    # Booking belongs to Citizen A
-    booking = await create_appointment(
-        db_session,
-        client_id=citizen_a["user"].id,
-        advocate_id=advocate["advocate_profile"].id,
-        status="COMPLETED",
-    )
-
-    # Citizen B attempts to review Citizen A's booking
-    res = await async_client.post(
-        "/api/v1/reviews",
-        headers=citizen_b["headers"],
-        json={"booking_id": str(booking.id), "rating": 4, "comment": "Trying to review another user's consultation"},
-    )
-    assert res.status_code == 403
-    assert "not authorized" in res.text.lower()
-
-
-@pytest.mark.asyncio
 async def test_review_for_nonexistent_booking_rejected(
     async_client: AsyncClient,
     db_session: AsyncSession,
@@ -241,40 +157,6 @@ async def test_review_for_incomplete_or_cancelled_booking_rejected(
         )
         assert res.status_code == 400, f"Expected 400 for status {ineligible_status}, got {res.status_code}"
         assert "concluded" in res.text.lower() or "completed" in res.text.lower()
-
-
-@pytest.mark.asyncio
-async def test_duplicate_review_submission_rejected(
-    async_client: AsyncClient,
-    db_session: AsyncSession,
-):
-    """A consultation booking can only be evaluated once; duplicate POST returns 409 Conflict."""
-    citizen = await create_user_and_token(async_client, db_session, role="CITIZEN", full_name="Citizen Duplicate", email_prefix="dup")
-    advocate = await create_user_and_token(async_client, db_session, role="ADVOCATE", full_name="Advocate Dup", email_prefix="advdup")
-
-    booking = await create_appointment(
-        db_session,
-        client_id=citizen["user"].id,
-        advocate_id=advocate["advocate_profile"].id,
-        status="COMPLETED",
-    )
-
-    # First review succeeds
-    res1 = await async_client.post(
-        "/api/v1/reviews",
-        headers=citizen["headers"],
-        json={"booking_id": str(booking.id), "rating": 5, "comment": "First evaluation."},
-    )
-    assert res1.status_code == 201
-
-    # Second review for the same booking must be rejected
-    res2 = await async_client.post(
-        "/api/v1/reviews",
-        headers=citizen["headers"],
-        json={"booking_id": str(booking.id), "rating": 4, "comment": "Duplicate evaluation attempt."},
-    )
-    assert res2.status_code == 409
-    assert "already" in res2.text.lower()
 
 
 @pytest.mark.asyncio

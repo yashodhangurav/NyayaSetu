@@ -239,7 +239,7 @@ npm run start
 
 ## 5. Verification Gates Before Reporting Complete
 
-Before declaring any task or PR complete, execute the verification commands for your affected area:
+For a focused backend edit, run the pytest file or cases covering the changed behavior from `backend/`. For example, chat greeting and Groq response mapping are covered by `python -m pytest -q tests/test_legal_ai_assistant.py -k "greeting or groq"`. Run the whole file for changes to other chat behavior. Use the full backend checks below before merging or when changing shared fixtures, authentication dependencies, or database infrastructure. Probe the live server when verifying runtime configuration or connectivity.
 
 ### Backend Checks
 ```bash

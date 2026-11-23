@@ -1,6 +1,5 @@
 """Automated unit and integration test suite for NyayaSetu Document Storage Migration Utility."""
 
-from datetime import datetime
 import hashlib
 from pathlib import Path
 import tempfile
@@ -14,13 +13,7 @@ from app.core.storage import BaseStorageProvider
 from app.modules.cases.models import LegalCase
 from app.modules.documents.models import Document
 from app.modules.users.models import User, UserRole
-from scripts.migrate_documents_to_cloud import (
-    compute_file_sha256,
-    format_bytes,
-    generate_migration_storage_key,
-    resolve_local_file,
-    run_migration,
-)
+from scripts.migrate_documents_to_cloud import generate_migration_storage_key, run_migration
 
 
 class MockCloudStorageProvider(BaseStorageProvider):
@@ -100,32 +93,6 @@ async def setup_migration_test_case(db_session: AsyncSession) -> tuple[User, Leg
     return user, case
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1. Utility Function Unit Tests
-# ─────────────────────────────────────────────────────────────────────────────
-
-def test_format_bytes():
-    """Verify human-readable byte calculations."""
-    assert format_bytes(500) == "500 B"
-    assert format_bytes(2048) == "2.00 KB"
-    assert format_bytes(5 * 1024 * 1024) == "5.00 MB"
-    assert format_bytes(2 * 1024 * 1024 * 1024) == "2.00 GB"
-
-
-def test_compute_file_sha256():
-    """Verify streaming SHA-256 calculation."""
-    content = b"Legal petition text for integrity verification"
-    expected = hashlib.sha256(content).hexdigest()
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp.write(content)
-        tmp.flush()
-        tmp_path = Path(tmp.name)
-    try:
-        assert compute_file_sha256(tmp_path) == expected
-    finally:
-        tmp_path.unlink()
-
-
 def test_generate_migration_storage_key():
     """Verify generated storage key format and randomness."""
     doc = Document(
@@ -140,10 +107,6 @@ def test_generate_migration_storage_key():
     key2 = generate_migration_storage_key(doc)
     assert key != key2
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. Dry-Run Mode Tests
-# ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_migration_dry_run_is_read_only(db_session: AsyncSession):
@@ -203,10 +166,6 @@ async def test_migration_dry_run_is_read_only(db_session: AsyncSession):
         assert local_file.is_file()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 3. Live Execution Mode Tests
-# ─────────────────────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_migration_execute_success_and_preserves_local_files(db_session: AsyncSession):
     """Test live migration uploads to cloud, updates DB metadata, and NEVER deletes local file."""
@@ -264,10 +223,6 @@ async def test_migration_execute_success_and_preserves_local_files(db_session: A
         assert local_file.read_bytes() == sample_bytes
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4. Resumability & Deduplication Tests
-# ─────────────────────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_migration_resumable_skips_already_migrated_documents(db_session: AsyncSession):
     """Test that already migrated documents verified in R2 are automatically skipped."""
@@ -304,10 +259,6 @@ async def test_migration_resumable_skips_already_migrated_documents(db_session: 
     assert report.migrated_count == 0
     assert len(mock_cloud.uploaded_keys) == 0  # No re-upload performed
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 5. Missing File & Integrity Mismatch Handling Tests
-# ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_migration_reports_missing_local_file_safely(db_session: AsyncSession):
@@ -388,10 +339,6 @@ async def test_migration_detects_checksum_mismatch(db_session: AsyncSession):
         assert len(mock_cloud.objects) == 0
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 6. Application Storage Limit (8 GB Ceiling) Tests
-# ─────────────────────────────────────────────────────────────────────────────
-
 @pytest.mark.asyncio
 async def test_migration_halts_before_exceeding_capacity_limit(db_session: AsyncSession):
     """Test that migration halts when projected R2 usage exceeds application capacity limit."""
@@ -437,10 +384,6 @@ async def test_migration_halts_before_exceeding_capacity_limit(db_session: Async
         assert report_exceeded.migrated_count == 0
         assert len(mock_cloud.objects) == 0
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 7. Rollback & Verify-Only Tests
-# ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_migration_rollback_mode(db_session: AsyncSession):

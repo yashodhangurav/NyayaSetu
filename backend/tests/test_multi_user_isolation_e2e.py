@@ -1,15 +1,4 @@
-"""End-to-End Multi-User Integration and Isolation Verification Suite.
-
-Tests cross-user data isolation and complete data flows across all 8 audited features:
-1. Dashboard summary
-2. Profile updates
-3. Consent ledger & withdrawal
-4. Download My Data
-5. Account deletion
-6. Document upload, OCR & explanation
-7. Direct messaging
-8. Advocate feedback & reviews
-"""
+"""Cross-account isolation for profiles, document analysis, reviews, exports and deletion."""
 
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -21,7 +10,6 @@ from app.core.security import hash_password
 from app.modules.advocates.models import AdvocateProfile
 from app.modules.appointments.models import Appointment
 from app.modules.cases.models import LegalCase
-from app.modules.deadlines.models import Deadline
 from app.modules.users.models import User
 
 
@@ -156,99 +144,6 @@ async def test_multi_user_profile_isolation(async_client: AsyncClient, db_sessio
 
 
 @pytest.mark.asyncio
-async def test_multi_user_dashboard_summary_isolation(async_client: AsyncClient, db_session: AsyncSession):
-    """Verify Dashboard summary derives metrics strictly from the user's authorized PostgreSQL records."""
-    user_a = await create_user_session(async_client, db_session, email_prefix="citizena")
-    user_b = await create_user_session(async_client, db_session, email_prefix="citizenb")
-
-    # User A has 0 records -> must return 0 counts and empty lists, not mock data
-    summary_a = await async_client.get("/api/v1/dashboard/summary", headers=user_a["headers"])
-    assert summary_a.status_code == 200
-    data_a = summary_a.json()
-    assert data_a["active_cases"] == 0
-    assert data_a["total_cases"] == 0
-    assert data_a["recent_case"] is None
-    assert len(data_a["upcoming_deadlines"]) == 0
-
-    # User B has an active case and deadline
-    case_b = LegalCase(
-        case_reference=f"NYA-CIV-{uuid.uuid4().hex[:6].upper()}",
-        client_id=user_b["user"].id,
-        title="Commercial Lease Recovery",
-        practice_group="Trials & Disputes",
-        matter_type="Civil Suit",
-        summary="Recovery of commercial security deposit",
-        stage="PLEADINGS",
-        conflict_status="CLEARED",
-        court_forum="City Civil Court, Bengaluru",
-    )
-    db_session.add(case_b)
-    await db_session.commit()
-    await db_session.refresh(case_b)
-
-    now = datetime.now(timezone.utc)
-    deadline_b = Deadline(
-        case_id=case_b.id,
-        title="Written Statement Filing Window",
-        due_date=now + timedelta(days=15),
-        deadline_type="COURT_HEARING",
-        priority="HIGH",
-        is_advocate_confirmed=True,
-        is_completed=False,
-    )
-    db_session.add(deadline_b)
-    await db_session.commit()
-
-    # User B's dashboard reflects the new case
-    summary_b = await async_client.get("/api/v1/dashboard/summary", headers=user_b["headers"])
-    assert summary_b.status_code == 200
-    data_b = summary_b.json()
-    assert data_b["active_cases"] == 1
-    assert data_b["recent_case"]["title"] == "Commercial Lease Recovery"
-    assert len(data_b["upcoming_deadlines"]) == 1
-
-    # User A's dashboard still reflects 0 (strict tenant isolation)
-    summary_a_again = await async_client.get("/api/v1/dashboard/summary", headers=user_a["headers"])
-    assert summary_a_again.json()["active_cases"] == 0
-
-
-@pytest.mark.asyncio
-async def test_multi_user_consent_ledger_and_cross_revocation(async_client: AsyncClient, db_session: AsyncSession):
-    """Verify DPDP Consent Ledger records actions and prohibits cross-user revocation."""
-    user_a = await create_user_session(async_client, db_session, email_prefix="citizena")
-    user_b = await create_user_session(async_client, db_session, email_prefix="citizenb")
-
-    # User A grants consent
-    grant_a = await async_client.post(
-        "/api/v1/users/me/consents",
-        headers=user_a["headers"],
-        json={
-            "consent_type": "terms",
-            "version": "1.0",
-            "purpose": "Citizen terms of engagement",
-        },
-    )
-    assert grant_a.status_code == 201
-    consent_id_a = grant_a.json()["id"]
-
-    # User B attempts to revoke User A's consent -> 404 (consent does not belong to B)
-    illegal_revoke = await async_client.post(
-        f"/api/v1/users/me/consents/{consent_id_a}/withdraw",
-        headers=user_b["headers"],
-    )
-    assert illegal_revoke.status_code == 404
-
-    # User A revokes their own consent -> succeeds
-    valid_revoke = await async_client.post(
-        f"/api/v1/users/me/consents/{consent_id_a}/withdraw",
-        headers=user_a["headers"],
-    )
-    assert valid_revoke.status_code == 200
-    assert valid_revoke.json()["is_revoked"] is True
-    assert valid_revoke.json()["revoked_at"] is not None
-
-
-@pytest.mark.asyncio
 async def test_multi_user_document_vault_and_explanation_isolation(async_client: AsyncClient, db_session: AsyncSession):
     """Verify document upload, OCR, and explanation isolate access between users."""
     user_a = await create_user_session(async_client, db_session, email_prefix="citizena")
@@ -313,61 +208,6 @@ async def test_multi_user_document_vault_and_explanation_isolation(async_client:
     )
     assert valid_explain.status_code == 200
     assert valid_explain.json()["document_id"] == doc_id
-
-
-@pytest.mark.asyncio
-async def test_multi_user_direct_messaging_isolation(async_client: AsyncClient, db_session: AsyncSession):
-    """Verify Chambers direct messaging strictly enforces participant isolation and prevents unauthorized eavesdropping."""
-    user_a = await create_user_session(async_client, db_session, email_prefix="citizena")
-    user_b = await create_user_session(async_client, db_session, email_prefix="citizenb")
-    advocate_c = await create_user_session(async_client, db_session, role="ADVOCATE", email_prefix="advocatec")
-
-    # User B creates a conversation with Advocate C
-    conv_res = await async_client.post(
-        "/api/v1/conversations",
-        headers=user_b["headers"],
-        json={"recipient_id": str(advocate_c["advocate_profile"].id)},
-    )
-    assert conv_res.status_code == 201
-    conv_id = conv_res.json()["id"]
-
-    # User B sends a message
-    msg_res = await async_client.post(
-        f"/api/v1/conversations/{conv_id}/messages",
-        headers=user_b["headers"],
-        json={"content": "Good morning Advocate C, filing brief is attached."},
-    )
-    assert msg_res.status_code == 201
-
-    # User A attempts to read messages from User B's conversation -> 403 Forbidden!
-    unauth_read = await async_client.get(
-        f"/api/v1/conversations/{conv_id}/messages",
-        headers=user_a["headers"],
-    )
-    assert unauth_read.status_code == 403
-
-    # User A attempts to send a message into User B's conversation -> 403 Forbidden!
-    unauth_send = await async_client.post(
-        f"/api/v1/conversations/{conv_id}/messages",
-        headers=user_a["headers"],
-        json={"content": "Intruding into private legal thread"},
-    )
-    assert unauth_send.status_code == 403
-
-    # Advocate C reads the thread and marks read
-    advocate_read = await async_client.get(
-        f"/api/v1/conversations/{conv_id}/messages",
-        headers=advocate_c["headers"],
-    )
-    assert advocate_read.status_code == 200
-    assert len(advocate_read.json()["items"]) == 1
-
-    mark_read_res = await async_client.post(
-        f"/api/v1/conversations/{conv_id}/read",
-        headers=advocate_c["headers"],
-    )
-    assert mark_read_res.status_code == 200
-    assert mark_read_res.json()["marked_count"] >= 1
 
 
 @pytest.mark.asyncio

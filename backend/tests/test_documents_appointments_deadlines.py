@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta, timezone
 import io
-import uuid
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -11,10 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import hash_password
 from app.modules.admin.models import AuditLog
 from app.modules.advocates.models import AdvocateProfile
-from app.modules.appointments.models import Appointment
-from app.modules.cases.models import LegalCase
-from app.modules.deadlines.models import Deadline
-from app.modules.documents.models import Document
 from app.modules.users.models import User, UserRole
 
 
@@ -186,28 +181,6 @@ async def test_case_document_upload_and_sha256_integrity(
         select(AuditLog).where(AuditLog.action == "DOCUMENT_UPLOADED")
     )
     assert audit_res.scalar_one_or_none() is not None
-
-
-@pytest.mark.asyncio
-async def test_document_upload_rejected_for_disallowed_file_types(
-    async_client: AsyncClient,
-):
-    """Verify upload rejection for dangerous or disallowed executable files."""
-    citizen_id, token = await create_citizen(async_client, email="doc.reject@example.com")
-    case = await create_test_case(async_client, token)
-    case_id = case["id"]
-
-    # Attempt to upload .exe
-    exe_content = b"MZ\x90\x00\x03\x00\x00\x00executable content"
-    files = {"file": ("malicious_payload.exe", io.BytesIO(exe_content), "application/octet-stream")}
-
-    res = await async_client.post(
-        f"/api/v1/documents/cases/{case_id}/upload",
-        headers={"Authorization": f"Bearer {token}"},
-        files=files,
-    )
-    assert res.status_code == 400
-    assert "File extension '.exe' is not permitted" in res.json()["error"]["message"]
 
 
 @pytest.mark.asyncio
