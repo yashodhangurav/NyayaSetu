@@ -968,4 +968,159 @@ CURATED_LEGAL_SOURCES: List[Dict[str, Any]] = [
             },
         ],
     },
+
+    # ──────────────────────────────────────────────────────────────
+    # 21. Property & Registration: The Registration Act, 1908
+    # ──────────────────────────────────────────────────────────────
+    {
+        "title": "The Registration Act, 1908",
+        "source_type": "BARE_ACT",
+        "short_code": "REG_ACT_1908",
+        "citation": "Act No. 16 of 1908",
+        "act_or_judgment_identifier": "Act No. 16 of 1908",
+        "jurisdiction": "Union of India",
+        "court": None,
+        "publication_date": date(1908, 12, 18),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://www.indiacode.nic.in/handle/123456789/2312",
+        "year": 1908,
+        "chunks": [
+            {
+                "section_number": "Section 17",
+                "clause_heading": "Documents of which registration is compulsory",
+                "chunk_text": (
+                    "Instruments of gift of immovable property; other non-testamentary instruments which purport or operate to create, "
+                    "declare, assign, limit or extinguish any right, title or interest of the value of one hundred rupees and upwards to or "
+                    "in immovable property; and leases of immovable property from year to year or exceeding one year must be compulsorily registered."
+                ),
+            },
+            {
+                "section_number": "Section 49",
+                "clause_heading": "Effect of non-registration of documents required to be registered",
+                "chunk_text": (
+                    "No document required by section 17 to be registered shall affect any immovable property comprised therein, or be received "
+                    "as evidence of any transaction affecting such property, unless it has been registered, except as evidence of a contract in a suit "
+                    "for specific performance or as evidence of any collateral transaction not required to be effected by registered instrument."
+                ),
+            },
+        ],
+    },
+
+    # ──────────────────────────────────────────────────────────────
+    # 22. Karnataka State: The Karnataka Land Revenue Act, 1964
+    # ──────────────────────────────────────────────────────────────
+    {
+        "title": "The Karnataka Land Revenue Act, 1964",
+        "source_type": "BARE_ACT",
+        "short_code": "KLRA_1964",
+        "citation": "Karnataka Act No. 12 of 1964",
+        "act_or_judgment_identifier": "Karnataka Act No. 12 of 1964",
+        "jurisdiction": "State of Karnataka",
+        "court": None,
+        "publication_date": date(1964, 3, 19),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://dpal.karnataka.gov.in",
+        "year": 1964,
+        "chunks": [
+            {
+                "section_number": "Section 95",
+                "clause_heading": "Uses of agricultural land and procedure for diversion for other purposes (Land Conversion)",
+                "chunk_text": (
+                    "An occupant of agricultural land wishing to divert such land or any part thereof to residential, commercial or "
+                    "industrial purposes must apply to the Deputy Commissioner for conversion. Deemed conversion applies upon payment of prescribed "
+                    "conversion fine if the land use conforms to the published Master Plan under the Karnataka Town and Country Planning Act."
+                ),
+            },
+            {
+                "section_number": "Section 128",
+                "clause_heading": "Acquisition of rights to be reported",
+                "chunk_text": (
+                    "Any person acquiring by succession, survivorship, inheritance, partition, purchase, mortgage, gift, lease or otherwise, "
+                    "any right as holder, occupant, owner, or tenant of land in Karnataka must report the acquisition to the prescribed revenue officer within three months."
+                ),
+            },
+            {
+                "section_number": "Section 133",
+                "clause_heading": "Presumption regarding entries in Record of Rights (Pahani / RTC)",
+                "chunk_text": (
+                    "An entry in the Record of Rights and a certified entry in the register of mutations shall be presumed to be true until the contrary "
+                    "is proved. However, revenue mutation does not confer or extinguish title, which can only be established by a competent civil court."
+                ),
+            },
+        ],
+    },
+
+    # ──────────────────────────────────────────────────────────────
+    # 23. Karnataka State: The Karnataka Rent Act, 1999
+    # ──────────────────────────────────────────────────────────────
+    {
+        "title": "The Karnataka Rent Act, 1999",
+        "source_type": "BARE_ACT",
+        "short_code": "KRA_1999",
+        "citation": "Karnataka Act No. 34 of 2001",
+        "act_or_judgment_identifier": "Karnataka Act No. 34 of 2001",
+        "jurisdiction": "State of Karnataka",
+        "court": None,
+        "publication_date": date(2001, 11, 27),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://dpal.karnataka.gov.in",
+        "year": 1999,
+        "chunks": [
+            {
+                "section_number": "Section 14",
+                "clause_heading": "Landlord's duty to keep premises in good repair and essential services",
+                "chunk_text": (
+                    "The landlord shall be bound to keep premises in good and tenantable repair and shall not withhold or cut off essential "
+                    "supplies such as electricity, water, or sanitation without just and sufficient cause."
+                ),
+            },
+            {
+                "section_number": "Section 27",
+                "clause_heading": "Protection of tenants against eviction and return of deposit",
+                "chunk_text": (
+                    "No tenant shall be evicted except on specific statutory grounds under Section 27. Advance security deposit exceeding one month "
+                    "rent must be accounted for and refunded to the tenant within 30 days of vacating premises; failure enables tenant to petition the Rent Controller."
+                ),
+            },
+        ],
+    },
+
+    # ──────────────────────────────────────────────────────────────
+    # 24. Karnataka State: The PTCL Act, 1978
+    # ──────────────────────────────────────────────────────────────
+    {
+        "title": "The Karnataka SC and ST (Prohibition of Transfer of Certain Lands) Act, 1978",
+        "source_type": "BARE_ACT",
+        "short_code": "PTCL_1978",
+        "citation": "Karnataka Act No. 2 of 1979",
+        "act_or_judgment_identifier": "Karnataka Act No. 2 of 1979",
+        "jurisdiction": "State of Karnataka",
+        "court": None,
+        "publication_date": date(1979, 1, 1),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://dpal.karnataka.gov.in",
+        "year": 1978,
+        "chunks": [
+            {
+                "section_number": "Section 4",
+                "clause_heading": "Prohibition of transfer of granted lands",
+                "chunk_text": (
+                    "Any transfer of granted land made either before or after the commencement of this Act in contravention of the terms of the grant "
+                    "or without prior permission of the Government is null and void and conveys no right, title or interest."
+                ),
+            },
+            {
+                "section_number": "Section 5",
+                "clause_heading": "Resumption and restitution of granted lands",
+                "chunk_text": (
+                    "The Assistant Commissioner is empowered to declare transfer of granted land null and void, resume the land to the Government "
+                    "free from all encumbrances, and restore possession to the original SC/ST grantee or their legal heirs."
+                ),
+            },
+        ],
+    },
 ]

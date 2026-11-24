@@ -97,6 +97,96 @@ CRIMINAL_CONCORDANCE: Dict[str, ConcordanceEntry] = {
         "Act endangering sovereignty, unity and integrity of India",
         "Colonial term 'Sedition' removed; re-framed around armed rebellion and secessionist acts."
     ),
+    "IPC:380": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 380",
+        "Theft in dwelling house, etc.",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 305",
+        "Theft in dwelling house, etc.",
+        "Aggravated theft punishment up to 7 years imprisonment and fine."
+    ),
+    "IPC:384": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 384",
+        "Punishment for extortion",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 308(2)",
+        "Extortion",
+        "Punishment up to 3 years imprisonment or fine or both."
+    ),
+    "IPC:406": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 406",
+        "Punishment for criminal breach of trust",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 316(2)",
+        "Criminal breach of trust",
+        "Punishment up to 5 years imprisonment or fine or both."
+    ),
+    "IPC:409": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 409",
+        "Criminal breach of trust by public servant, or by banker, merchant or agent",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 316(5)",
+        "Criminal breach of trust by public servant, banker, merchant or agent",
+        "Aggravated breach of trust punishable with life imprisonment or up to 10 years."
+    ),
+    "IPC:468": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 468",
+        "Forgery for purpose of cheating",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 338",
+        "Forgery for purpose of cheating",
+        "Punishment up to 7 years imprisonment and fine retained."
+    ),
+    "IPC:471": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 471",
+        "Using as genuine a forged document or electronic record",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 340",
+        "Using as genuine a forged document or electronic record",
+        "Punished in the same manner as if accused forged such document."
+    ),
+    "IPC:504": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 504",
+        "Intentional insult with intent to provoke breach of the peace",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 352",
+        "Intentional insult with intent to provoke breach of peace",
+        "Punishment up to 2 years imprisonment or fine or both."
+    ),
+    "IPC:509": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 509",
+        "Word, gesture or act intended to insult the modesty of a woman",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 79",
+        "Word, gesture or act intended to insult modesty of woman",
+        "Simple imprisonment up to 3 years and fine."
+    ),
+    "IPC:34": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 34",
+        "Acts done by several persons in furtherance of common intention",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 3(5)",
+        "Joint liability and common intention",
+        "Joint criminal liability principle identical."
+    ),
+    "IPC:120B": ConcordanceEntry(
+        "Indian Penal Code, 1860",
+        "Section 120B",
+        "Punishment of criminal conspiracy",
+        "Bharatiya Nyaya Sanhita, 2023",
+        "Section 61(2)",
+        "Criminal conspiracy",
+        "Conspiracy principles preserved under Chapter IV: Abetment and Criminal Conspiracy."
+    ),
 
     # ── CrPC 1973 -> BNSS 2023 ──
     "CRPC:154": ConcordanceEntry(
@@ -162,6 +252,33 @@ CRIMINAL_CONCORDANCE: Dict[str, ConcordanceEntry] = {
         "Order for maintenance of wives, children and parents",
         "Speedy monthly maintenance remedy preserved for deserted dependents."
     ),
+    "CRPC:161": ConcordanceEntry(
+        "Code of Criminal Procedure, 1973",
+        "Section 161",
+        "Examination of witnesses by police",
+        "Bharatiya Nagarik Suraksha Sanhita, 2023",
+        "Section 180",
+        "Examination of witnesses by police",
+        "Audio-video electronic means of recording statements introduced."
+    ),
+    "CRPC:164": ConcordanceEntry(
+        "Code of Criminal Procedure, 1973",
+        "Section 164",
+        "Recording of confessions and statements",
+        "Bharatiya Nagarik Suraksha Sanhita, 2023",
+        "Section 183",
+        "Recording of confessions and statements",
+        "Audio-video electronic recording of victim statement in sexual offences mandatory."
+    ),
+    "CRPC:173": ConcordanceEntry(
+        "Code of Criminal Procedure, 1973",
+        "Section 173",
+        "Report of police officer on completion of investigation (Charge Sheet)",
+        "Bharatiya Nagarik Suraksha Sanhita, 2023",
+        "Section 193",
+        "Report of police officer on completion of investigation",
+        "Mandatory 90-day progress reporting to informant and electronic submission of police report."
+    ),
 
     # ── Evidence Act 1872 -> BSA 2023 ──
     "IEA:65B": ConcordanceEntry(
@@ -172,6 +289,24 @@ CRIMINAL_CONCORDANCE: Dict[str, ConcordanceEntry] = {
         "Section 63",
         "Admissibility of electronic records",
         "Electronic/digital records elevated to primary evidence status with simplified certification schedules."
+    ),
+    "IEA:27": ConcordanceEntry(
+        "Indian Evidence Act, 1872",
+        "Section 27",
+        "How much of information received from accused may be proved",
+        "Bharatiya Sakshya Adhiniyam, 2023",
+        "Section 23",
+        "Discovery statement of accused",
+        "Fact discovered in consequence of information received from person in police custody may be proved."
+    ),
+    "IEA:114A": ConcordanceEntry(
+        "Indian Evidence Act, 1872",
+        "Section 114A",
+        "Presumption as to absence of consent in certain prosecution for rape",
+        "Bharatiya Sakshya Adhiniyam, 2023",
+        "Section 119",
+        "Presumption as to absence of consent in certain prosecutions for rape",
+        "Statutory presumption of absence of consent maintained."
     ),
 }
 

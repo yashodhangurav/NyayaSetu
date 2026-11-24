@@ -14,8 +14,9 @@ Consolidated documentation for NyayaSetu (न्यायसेतु). This fol
 | Database schema and migrations | [`DATABASE.md`](DATABASE.md) |
 | Frontend routes, UI, and integration | [`FRONTEND.md`](FRONTEND.md) |
 | Verification commands and operational tools | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
-| AI/RAG design, ingestion, evaluation | [`AI_AND_RAG.md`](AI_AND_RAG.md) |
-| Bundled corpus fields and provenance | [Data dictionary](RAG_DATA_DICTIONARY.md), [source registry](source_registry.csv) |
+| AI/RAG architecture, data dictionary & ingestion | [`AI_AND_RAG.md`](AI_AND_RAG.md) |
+| Complete RAG model, chatbot scope & all sources catalog | [`../RAG.md`](../RAG.md) |
+| Official source registry metadata | [`source_registry.csv`](source_registry.csv) |
 | Security, storage, privacy, compliance | [`SECURITY_STORAGE_AND_COMPLIANCE.md`](SECURITY_STORAGE_AND_COMPLIANCE.md) |
 | Delivery history, audits, implementation reports | [`DELIVERY_RECORD.md`](DELIVERY_RECORD.md) |
 | Roadmap and known gaps | [`ROADMAP.md`](ROADMAP.md) |

@@ -108,3 +108,19 @@ class CitationValidator:
                 logger.warning(f"Pruned ungrounded section mention: Section {mention}")
 
         return verified_citations, list(dict.fromkeys(unverified_detected))
+
+    @classmethod
+    def sanitize_answer_prose(cls, answer_text: str, unverified_citations: List[str]) -> str:
+        """Sanitizes generated answer prose by neutralising any fabricated or unverified statutory mentions."""
+        if not unverified_citations or not answer_text:
+            return answer_text
+
+        sanitized = answer_text
+        for unverified in unverified_citations:
+            match = re.search(r"Section\s+([0-9]+[a-z]?)", unverified, re.IGNORECASE)
+            if match:
+                sec_num = match.group(1)
+                pattern = re.compile(rf"\b(section\s+{sec_num})\b", re.IGNORECASE)
+                sanitized = pattern.sub(r"the relevant statutory provision", sanitized)
+
+        return sanitized

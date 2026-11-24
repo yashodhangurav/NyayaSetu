@@ -89,14 +89,18 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_PUBLISHABLE_KEY: str = "sb_publishable_AghcSMNgQd1JlABKevbIGA_wROA32fu"
 
-    # AI & Legal Embeddings Configuration
+    # AI, Embeddings & Reranker Configuration
     AI_PROVIDER: str = "mock"  # "groq", "gemini" or "mock"
     GROQ_API_KEY: Optional[str] = None
     GROQ_LLM_MODEL: str = "qwen/qwen3.8-27b"
     GEMINI_API_KEY: str = ""
     GEMINI_LLM_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    EMBEDDING_PROVIDER: str = "multilingual"  # "multilingual", "gemini", "bge", "mock"
+    EMBEDDING_MODEL: str = "BAAI/bge-m3"
     EMBEDDING_VECTOR_DIMENSION: int = 768
+    RERANKER_PROVIDER: str = "cross_encoder"  # "cross_encoder", "bge", "reciprocal_rank", "none"
+    RERANKER_MODEL: str = "BAAI/bge-reranker-large"
 
     # Grounded RAG Retrieval Parameters
     RAG_RELEVANCE_THRESHOLD: float = 0.45

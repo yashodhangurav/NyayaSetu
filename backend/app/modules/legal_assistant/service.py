@@ -126,11 +126,13 @@ class LegalAssistantService:
 
         # 5. Validate citations strictly against retrieved context
         raw_claimed_refs = llm_output.get("cited_references", [])
+        raw_answer = llm_output.get("answer", "")
         verified_citations, unverified_pruned = CitationValidator.validate_and_filter_citations(
-            answer_text=llm_output.get("answer", ""),
+            answer_text=raw_answer,
             claimed_references=raw_claimed_refs,
             retrieved_chunks=retrieved_chunks,
         )
+        final_answer = CitationValidator.sanitize_answer_prose(raw_answer, unverified_pruned)
 
         sources_found = (
             llm_output.get("sources_found", False)
@@ -183,7 +185,7 @@ class LegalAssistantService:
         return LegalAskResponse(
             query=payload.query,
             detected_language=detected_lang,
-            answer=llm_output.get("answer", ""),
+            answer=final_answer,
             decision_badge=llm_output.get("decision_badge", "Self-help first"),
             sources_found=sources_found,
             citations=verified_citations,

@@ -444,6 +444,13 @@ Helpline: Call 15100 (toll-free national legal aid helpline) or visit the Distri
         )
         chunks.append(chk)
 
+    # 6. Integrated Expanded Modules (Central Property, Karnataka Land & Tenancy, Precedents)
+    try:
+        from rag.ingest.expanded_sources import get_expanded_corpus_chunks
+        chunks.extend(get_expanded_corpus_chunks())
+    except ImportError:
+        pass
+
     return chunks
 
 
