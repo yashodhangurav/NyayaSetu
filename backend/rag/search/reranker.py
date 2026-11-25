@@ -19,9 +19,9 @@ class LegalReranker:
         heading = (chunk.get("clause_heading") or "").lower()
 
         # Base score from RRF retrieval rank (normalized)
-        score = initial_rank_score * 0.50
+        score = initial_rank_score * 0.55
 
-        # Exact section number mention in query (e.g. 138, 27, 318, 173)
+        # Exact section number mention in query (e.g. 138, 27, 318, 173, 185)
         clean_sec = section.replace("section", "").replace("article", "").strip()
         if clean_sec and re.search(rf"\b{re.escape(clean_sec)}\b", q_lower):
             score += 0.35
@@ -33,22 +33,28 @@ class LegalReranker:
         elif any(part in q_lower for part in act.split() if len(part) > 4):
             score += 0.15
 
-        # Heading keyword alignment
+        # Heading keyword alignment with prefix matching
         heading_words = [w for w in re.findall(r"\w+", heading) if len(w) > 3]
         if heading_words:
-            matched_heading_words = sum(1 for w in heading_words if w in q_lower)
-            score += 0.15 * (matched_heading_words / len(heading_words))
+            matched_heading_words = sum(
+                1 for w in heading_words
+                if w in q_lower or any(qw.startswith(w[:4]) or w.startswith(qw[:4]) for qw in re.findall(r"\w+", q_lower) if len(qw) > 3)
+            )
+            score += 0.18 * (matched_heading_words / len(heading_words))
 
-        # Query term density in chunk text
+        # Query term density in chunk text with stem/prefix support
         q_words = [w for w in re.findall(r"\w+", q_lower) if len(w) > 3]
         if q_words:
-            matched_body_words = sum(1 for w in q_words if w in chunk_text)
-            score += 0.15 * min(1.0, matched_body_words / max(3, len(q_words)))
+            matched_body_words = sum(
+                1 for w in q_words
+                if w in chunk_text or (len(w) >= 4 and w[:4] in chunk_text)
+            )
+            score += 0.18 * min(1.0, matched_body_words / max(3, len(q_words)))
 
         # Topic tags match
         tags = chunk.get("topic_tags", [])
-        if any(tag.lower() in q_lower for tag in tags):
-            score += 0.15
+        if any(tag.lower() in q_lower or any(tw in q_lower for tw in tag.lower().split() if len(tw) > 4) for tag in tags):
+            score += 0.18
 
         return min(round(score, 4), 1.0)
 

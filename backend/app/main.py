@@ -1,13 +1,21 @@
 """FastAPI Application Initialization and Lifecycle Management."""
 
+import sys
+if sys.platform == "win32":
+    import asyncio
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.v1.health import router as health_router
+from app.api.v1.openai_compat import router as openai_compat_router
 from app.api.v1.router import api_v1_router
 from app.core.config import settings, validate_ai_configuration, validate_storage_configuration
+from app.core.database import initialize_database
 from app.core.errors import register_exception_handlers
 from app.core.logging import logger, setup_logging
 
@@ -20,6 +28,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     validate_ai_configuration(settings)
     # Validate Document Storage backend configuration
     validate_storage_configuration(settings)
+    # Ensure the schema exists when running on the local SQLite development database
+    await initialize_database()
     logger.info(
         f"Starting {settings.APP_NAME} v{settings.APP_VERSION} in [{settings.ENVIRONMENT}] mode",
         extra={
@@ -28,6 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "api_prefix": settings.API_V1_PREFIX,
             "ai_provider": settings.AI_PROVIDER,
             "storage_backend": settings.STORAGE_BACKEND,
+            "database": "sqlite" if settings.is_sqlite else "postgresql",
         },
     )
     yield
@@ -58,7 +69,9 @@ def create_application() -> FastAPI:
     # 2. Centralized Error Handlers
     register_exception_handlers(app)
 
-    # 3. Mount Versioned API Routes (/api/v1)
+    # 3. Mount Versioned API Routes (/api/v1), Root Health Check, and OpenAI-compat /v1
+    app.include_router(health_router, include_in_schema=False)
+    app.include_router(openai_compat_router, prefix="/v1", include_in_schema=False)
     app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
 
     # 4. Root Welcome Endpoint

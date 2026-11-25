@@ -8,7 +8,8 @@
     "build": "next build",
     "build:webpack": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:chat": "node --experimental-strip-types --test scripts/test-chat-error-handling.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

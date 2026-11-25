@@ -65,6 +65,19 @@ def is_trusted_official_source_url(url: Optional[str]) -> bool:
 class LegalDocumentIngestionPipeline:
     """Production ingestion engine for verified Indian statutes and judicial records."""
 
+    @staticmethod
+    def _extract_text(
+        content: Union[bytes, str],
+        file_format: str,
+        filename: Optional[str] = None,
+    ) -> str:
+        """Extract document text without creating an ingestion job."""
+        return DocumentParser.extract_text(
+            content=content,
+            file_format=file_format,
+            filename=filename,
+        )
+
     @classmethod
     async def ingest_document(
         cls,

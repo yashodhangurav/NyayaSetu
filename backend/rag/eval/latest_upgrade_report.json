@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-11-25T16:19:58.856280+00:00",
+  "evidence_set": {
+    "path": "C:\\Users\\rahul\\Desktop\\NyayaSetu\\backend\\rag\\eval\\testset.jsonl",
+    "items": 156,
+    "human_verified": false,
+    "warning": "This generated set is a regression signal only. It is not legal ground truth and cannot establish legal answer accuracy."
+  },
+  "configuration": {
+    "corpus_path": "rag\\data\\processed\\canonical_corpus.json",
+    "corpus_sha256": "65ef953df13787289b7657501b4340d70a0f330b799de19667744c2bc51d7216",
+    "embedding_provider": "DeterministicMockEmbeddingProvider",
+    "embedding_dimension": 768,
+    "generation_provider": "DeterministicGroundedLLMProvider",
+    "top_k": 5,
+    "environment": "development",
+    "neural_embedding_enabled": false,
+    "source_fetch_enabled": false,
+    "official_fallback_enabled": false,
+    "evidence_min_score": 0.45,
+    "evidence_min_chunks": 1
+  },
+  "retrieval": {
+    "in_scope_queries": 145,
+    "recall_at_1": 0.7586,
+    "recall_at_3": 0.8759,
+    "recall_at_5": 0.8966,
+    "mrr_at_5": 0.8175,
+    "out_of_scope_total": 11,
+    "out_of_scope_correct": 11,
+    "repealed_leakage_count": 0
+  },
+  "grounding": {
+    "verified_citations": 536,
+    "unverified_citations_pruned": 0,
+    "supported_claims": 1411,
+    "unsupported_claims": 0,
+    "claim_support_ratio": 1.0,
+    "answers_with_sources": 139
+  },
+  "per_language": {
+    "en": {
+      "total": 72,
+      "recall_at_5": 0.9306,
+      "mrr_at_5": 0.8368
+    },
+    "hi": {
+      "total": 27,
+      "recall_at_5": 0.8148,
+      "mrr_at_5": 0.7019
+    },
+    "kn": {
+      "total": 30,
+      "recall_at_5": 0.8667,
+      "mrr_at_5": 0.8111
+    },
+    "mixed": {
+      "total": 16,
+      "recall_at_5": 0.9375,
+      "mrr_at_5": 0.9375
+    }
+  },
+  "quality_gate": {
+    "passed": false,
+    "reason": "No human-verified legal ground truth is available; this harness does not certify legal accuracy. Numeric results are regression evidence only."
+  }
+}

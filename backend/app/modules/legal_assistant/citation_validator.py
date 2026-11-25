@@ -6,10 +6,40 @@ Prunes or flags any attempted hallucinations.
 """
 
 import re
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from app.core.logging import logger
 from app.modules.legal_assistant.schemas import CitationItem
+
+
+# Stop words are ignored only for the claim-support heuristic; they are never used
+# to rewrite or weaken retrieved statutory text.
+_CLAIM_STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "been", "being", "by", "can", "could",
+    "for", "from", "has", "have", "having", "he", "her", "here", "him", "his", "how",
+    "in", "into", "is", "it", "its", "may", "might", "more", "must", "of", "on", "or",
+    "our", "shall", "she", "should", "that", "the", "their", "them", "there", "these",
+    "they", "this", "to", "under", "was", "we", "were", "what", "when", "where", "which",
+    "who", "why", "will", "with", "would", "you", "your", "provides", "provides that",
+    "law", "law provides", "section", "act", "acts", "legal", "provision", "provisions",
+}
+
+_META_CLAIM_MARKERS = (
+    "no verified legal sources",
+    "consult an empanelled advocate",
+    "formal legal advice",
+    "advocate-client relationship",
+    "does not constitute",
+    "high similarity score",
+    "informational guidance",
+    "provide additional matter facts",
+    "please specify",
+    "before i can explain",
+    "हिंदी सारांश",
+    "ಕನ್ನಡ ಸಾರಾಂಶ",
+    " परामर्श करें",
+    " ಸಂಪರ್ಕಿಸಿ",
+)
 
 
 class CitationValidator:
@@ -124,3 +154,76 @@ class CitationValidator:
                 sanitized = pattern.sub(r"the relevant statutory provision", sanitized)
 
         return sanitized
+
+    @staticmethod
+    def split_claims(answer_text: str) -> List[str]:
+        """Split generated prose into checkable claim-sized sentences."""
+        if not answer_text:
+            return []
+        clean = re.sub(r"\*\*|__|`", "", answer_text)
+        clean = re.sub(r"\s+", " ", clean)
+        parts = re.split(r"(?<=[.!?।])\s+|\n+", clean)
+        return [part.strip() for part in parts if part.strip()]
+
+    @staticmethod
+    def _content_tokens(text: str) -> Set[str]:
+        tokens = re.findall(r"[\w]+", text.casefold(), flags=re.UNICODE)
+        return {
+            token for token in tokens
+            if len(token) > 1
+            and (token.isdigit() or token not in _CLAIM_STOP_WORDS)
+        }
+
+    @classmethod
+    def verify_claim_support(
+        cls,
+        answer_text: str,
+        retrieved_chunks: List[Dict[str, Any]],
+        *,
+        min_overlap: Optional[float] = None,
+    ) -> Tuple[List[str], List[str], Dict[str, Any]]:
+        """Check each substantive sentence against the retrieved source text.
+
+        This is a conservative lexical support check, not legal reasoning. It is used
+        to flag unsupported generation for review and to trigger abstention only when
+        no verified citation exists. Retrieved text is always treated as data.
+        """
+        threshold = min_overlap if min_overlap is not None else 0.25
+        claims = cls.split_claims(answer_text)
+        if not claims:
+            return [], [], {"claim_count": 0, "support_ratio": 1.0, "threshold": threshold}
+
+        corpus_text = " ".join(
+            " ".join(
+                str(chunk.get(key) or "")
+                for key in ("chunk_text", "relevant_text", "clause_heading", "source_title")
+            )
+            for chunk in retrieved_chunks
+        )
+        corpus_tokens = cls._content_tokens(corpus_text)
+        supported: List[str] = []
+        unsupported: List[str] = []
+        for claim in claims:
+            lowered = claim.casefold()
+            if any(marker in lowered for marker in _META_CLAIM_MARKERS):
+                continue
+            tokens = cls._content_tokens(claim)
+            if len(tokens) < 3:
+                # Short transitions and citations carry no independent factual claim.
+                continue
+            overlap = len(tokens & corpus_tokens) / len(tokens)
+            if overlap >= threshold:
+                supported.append(claim)
+            else:
+                unsupported.append(claim)
+                logger.warning("Unsupported generated claim flagged: %s", claim[:180])
+
+        substantive = len(supported) + len(unsupported)
+        ratio = len(supported) / substantive if substantive else 1.0
+        return supported, unsupported, {
+            "claim_count": substantive,
+            "supported_claims": len(supported),
+            "unsupported_claims": len(unsupported),
+            "support_ratio": round(ratio, 4),
+            "threshold": threshold,
+        }

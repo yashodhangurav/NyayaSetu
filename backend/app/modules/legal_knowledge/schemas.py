@@ -44,6 +44,37 @@ class LegalIngestionJobResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SourceRegistryBootstrapRequest(BaseModel):
+    """Load declared official-source candidates into the persistent registry."""
+
+    csv_path: Optional[str] = Field(None, description="Optional absolute path to an alternate registry CSV")
+    enable_verified: bool = Field(False, description="Enable rows that were previously live-verified")
+
+
+class SourceVerificationRequest(BaseModel):
+    """Request live verification of declared official document URLs."""
+
+    source_keys: List[str] = Field(default_factory=list, max_length=500)
+    verify_all: bool = Field(False)
+    force: bool = Field(False, description="Override RAG_SOURCE_FETCH_ENABLED for this explicit action")
+
+
+class SourceSyncRequest(BaseModel):
+    """Request discovery, fetch, checksum, and review-queue creation."""
+
+    source_key: str = Field(..., min_length=2, max_length=128)
+    mode: str = Field("INCREMENTAL", max_length=32)
+    force: bool = Field(False)
+    enable_verified: bool = Field(False)
+
+
+class DocumentVersionIngestRequest(BaseModel):
+    """Explicit administrative promotion of an approved document version."""
+
+    version_id: UUID
+    reviewer_note: Optional[str] = Field(None, max_length=1000)
+
+
 class LegalSourceSummaryResponse(BaseModel):
     """Public summary representation of an ingested legal source."""
 

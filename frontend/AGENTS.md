@@ -78,6 +78,7 @@ npm run start
 ```bash
 npm run lint
 npm run build
+npm run test:chat   # Node type-stripping tests for chat error/retry handling
 ```
 
 There is no test suite yet. If you add one, document the command here and in

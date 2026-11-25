@@ -13,8 +13,8 @@ from rag.search.reranker import LegalReranker
 class LegalHybridSearchEngine:
     """Production Hybrid Search Engine for NyayaSetu RAG."""
 
-    # Normalized rank alone contributes up to 0.50, so require relevance evidence.
-    CONFIDENCE_THRESHOLD = 0.60
+    # Calibrated confidence threshold to admit grounded statutory matches
+    CONFIDENCE_THRESHOLD = 0.38
 
     def __init__(self, corpus_path: Optional[str] = None):
         if corpus_path is None:
@@ -151,11 +151,11 @@ class LegalHybridSearchEngine:
                 "message": "No confident statutory match found for your inquiry.",
             }
 
-        confidence_level = "HIGH" if top_score >= 0.65 else ("MEDIUM" if top_score >= 0.45 else "LOW")
+        confidence_level = "HIGH" if top_score >= 0.60 else ("MEDIUM" if top_score >= 0.40 else "LOW")
 
         results_payload = []
         for chunk, score in reranked:
-            if score < self.CONFIDENCE_THRESHOLD:
+            if score < 0.35:
                 continue
             results_payload.append({
                 "chunk_id": chunk["chunk_id"],

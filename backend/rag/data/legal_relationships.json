@@ -1,0 +1,427 @@
+[
+  {
+    "source_ref": "IPC:420",
+    "target_ref": "BNS:318(4)",
+    "relationship_type": "REPLACES",
+    "description": "Cheating and dishonestly inducing delivery of property replaced by BNS Section 318(4)",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "IPC 1860",
+      "new_act": "BNS 2023",
+      "savings_clause": "Section 358 BNS"
+    }
+  },
+  {
+    "source_ref": "IPC:302",
+    "target_ref": "BNS:103(1)",
+    "relationship_type": "REPLACES",
+    "description": "Punishment for murder replaced by BNS Section 103(1)",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "IPC 1860",
+      "new_act": "BNS 2023"
+    }
+  },
+  {
+    "source_ref": "IPC:498A",
+    "target_ref": "BNS:85/86",
+    "relationship_type": "REPLACES",
+    "description": "Husband or relative of husband of a woman subjecting her to cruelty replaced by BNS Sections 85 and 86",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "IPC 1860",
+      "new_act": "BNS 2023"
+    }
+  },
+  {
+    "source_ref": "CRPC:154",
+    "target_ref": "BNSS:173",
+    "relationship_type": "REPLACES",
+    "description": "Information in cognizable cases (FIR) replaced by BNSS Section 173 with explicit provision for Zero FIR and electronic information",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "CrPC 1973",
+      "new_act": "BNSS 2023",
+      "savings_clause": "Section 531 BNSS"
+    }
+  },
+  {
+    "source_ref": "CRPC:438",
+    "target_ref": "BNSS:482",
+    "relationship_type": "REPLACES",
+    "description": "Direction for grant of bail to person apprehending arrest (Anticipatory Bail) replaced by BNSS Section 482",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "CrPC 1973",
+      "new_act": "BNSS 2023"
+    }
+  },
+  {
+    "source_ref": "CRPC:125",
+    "target_ref": "BNSS:144",
+    "relationship_type": "REPLACES",
+    "description": "Order for maintenance of wives, children and parents replaced by BNSS Section 144",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "CrPC 1973",
+      "new_act": "BNSS 2023"
+    }
+  },
+  {
+    "source_ref": "CRPC:41A",
+    "target_ref": "BNSS:35(3)",
+    "relationship_type": "REPLACES",
+    "description": "Notice of appearance before police officer in offences punishable up to 7 years replaced by BNSS Section 35(3)",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "CrPC 1973",
+      "new_act": "BNSS 2023"
+    }
+  },
+  {
+    "source_ref": "IEA:65B",
+    "target_ref": "BSA:63",
+    "relationship_type": "REPLACES",
+    "description": "Admissibility of electronic records and mandatory certificate requirement replaced by BSA Section 63",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "old_act": "IEA 1872",
+      "new_act": "BSA 2023"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_SURAJLAMP_001",
+    "target_ref": "SRC_TPA_001:Section 54",
+    "relationship_type": "INTERPRETS",
+    "description": "Suraj Lamp (2012) 1 SCC 656 held that General Power of Attorney (GPA), Sale Agreement, or Will transactions do not convey title in immovable property; transfer only via registered conveyance under TPA Section 54 and Registration Act Section 17",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "GPA sales invalid for title transfer"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_VINEETA_001",
+    "target_ref": "SRC_HSA_001:Section 6",
+    "relationship_type": "INTERPRETS",
+    "description": "Vineeta Sharma (2020) 9 SCC 1 held that daughters have coparcenary rights by birth under Section 6 HSA with effect from birth, irrespective of whether the father was alive on the date of the 2005 amendment",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Equal coparcenary rights for daughters"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_RAJNESH_001",
+    "target_ref": "SRC_BNSS_001:Section 144",
+    "relationship_type": "INTERPRETS",
+    "description": "Rajnesh v. Neha (2021) 2 SCC 324 formulated uniform guidelines and made the filing of an Affidavit of Assets and Liabilities mandatory across all maintenance proceedings under BNSS 144, HMA 24, and PWDVA 12",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Mandatory asset affidavit in maintenance"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_ARNESH_001",
+    "target_ref": "SRC_BNSS_001:Section 35",
+    "relationship_type": "INTERPRETS",
+    "description": "Arnesh Kumar (2014) 8 SCC 273 mandated that police shall not automatically arrest accused in offences punishable with imprisonment up to 7 years without satisfying checklist under Section 41 CrPC (Section 35 BNSS)",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Notice mandatory prior to arrest for <7 yr offences"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_LALITA_001",
+    "target_ref": "SRC_BNSS_001:Section 173",
+    "relationship_type": "INTERPRETS",
+    "description": "Lalita Kumari (2014) 2 SCC 1 held that registration of FIR is mandatory under Section 154 CrPC (Section 173 BNSS) if information discloses commission of a cognizable offence",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Mandatory FIR for cognizable offence"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_RANGAPPA_001",
+    "target_ref": "SRC_NIA_001:Section 139",
+    "relationship_type": "INTERPRETS",
+    "description": "Rangappa v. Sri Mohan (2010) 11 SCC 441 held that presumption under Section 139 NI Act includes the existence of a legally enforceable debt; standard of rebuttal by accused is preponderance of probabilities",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Reverse burden on drawer in cheque bounce"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_JITENDRA_001",
+    "target_ref": "SRC_KAR_KLR_001:Section 128",
+    "relationship_type": "INTERPRETS",
+    "description": "Jitendra Singh (2021) SCC OnLine SC 802 reiterated that mutation of property in revenue records (Khata, RTC, Pahani) does not create or extinguish title; revenue entries are for fiscal taxation purposes only",
+    "jurisdiction": "Union of India / State of Karnataka",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Khata / Mutation is not title"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_ANATHULA_001",
+    "target_ref": "SRC_SRA_001:Section 38",
+    "relationship_type": "INTERPRETS",
+    "description": "Anathula Sudhakar (2008) 4 SCC 594 laid down principles on maintainability of suit for injunction: where plaintiff title is under cloud and he is not in possession, a suit for bare injunction is not maintainable without seeking declaration of title and possession",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Injunction requires declaration when title disputed"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_IMPERIA_001",
+    "target_ref": "SRC_RERA_001:Section 18",
+    "relationship_type": "INTERPRETS",
+    "description": "Imperia Structures (2020) 10 SCC 783 ruled that remedies under RERA and the Consumer Protection Act are concurrent and alternative; homebuyer is entitled to file consumer complaint despite RERA enactment",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Consumer Forum and RERA remedies concurrent"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_DANIAL_001",
+    "target_ref": "SRC_MWD_001:Section 3",
+    "relationship_type": "INTERPRETS",
+    "description": "Danial Latifi (2001) 7 SCC 740 upheld constitutionality of 1986 Act by interpreting that a Muslim husband's obligation to provide fair and reasonable provision and maintenance extends beyond the iddat period for the entire lifetime of the divorced wife",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Lifetime maintenance for divorced Muslim woman"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_JACOBMATHEW_001",
+    "target_ref": "SRC_BNS_001:Section 106",
+    "relationship_type": "INTERPRETS",
+    "description": "Jacob Mathew (2005) 6 SCC 1 held that to convict a medical professional for criminal negligence under IPC 304A / BNS 106(1), the negligence must be gross, and an independent expert opinion must be obtained before arresting the doctor",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Gross negligence test for doctors"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_MANCHEGOWDA_001",
+    "target_ref": "SRC_KAR_PTCL_001:Section 4",
+    "relationship_type": "INTERPRETS",
+    "description": "Manchegowda (1984) 3 SCC 301 upheld the constitutional validity of the Karnataka PTCL Act, holding that alienation of granted land to SC/ST persons without prior government permission is null and void",
+    "jurisdiction": "State of Karnataka",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "PTCL void alienation upheld"
+    }
+  },
+  {
+    "source_ref": "SRC_CASE_NEKKANTI_001",
+    "target_ref": "SRC_KAR_PTCL_001:Section 5",
+    "relationship_type": "INTERPRETS",
+    "description": "Nekkanti Rama Lakshmi (2020) 14 SCC 232 held that where no limitation period is prescribed under Section 5 PTCL Act, application for resumption must be filed within a reasonable time; decades of delay disentitles restoration",
+    "jurisdiction": "State of Karnataka",
+    "metadata": {
+      "court": "Supreme Court of India",
+      "ruling": "Reasonable period limitation applies to PTCL"
+    }
+  },
+  {
+    "source_ref": "PROBLEM_PROPERTY_TITLE_DISPUTE",
+    "target_ref": "SRC_TPA_001:Section 54",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Sale deed must be executed and registered to convey legal ownership",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "priority": 1
+    }
+  },
+  {
+    "source_ref": "PROBLEM_PROPERTY_TITLE_DISPUTE",
+    "target_ref": "SRC_REG_001:Section 17",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Registration is compulsory for all transfers of immovable property valued over Rs 100",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "priority": 2
+    }
+  },
+  {
+    "source_ref": "PROBLEM_PROPERTY_TITLE_DISPUTE",
+    "target_ref": "SRC_SRA_001:Section 34",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Suit for declaration of title and possession under Specific Relief Act",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "priority": 3
+    }
+  },
+  {
+    "source_ref": "PROBLEM_PROPERTY_TITLE_DISPUTE",
+    "target_ref": "SRC_KAR_KLR_001:Section 128",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Mutation and RTC entry in Karnataka reflects fiscal possession, but not substantive title",
+    "jurisdiction": "State of Karnataka",
+    "metadata": {
+      "priority": 4
+    }
+  },
+  {
+    "source_ref": "PROBLEM_PROPERTY_TITLE_DISPUTE",
+    "target_ref": "SRC_LIM_001:Article 65",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "12-year statutory limitation period for recovery of possession based on title",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "priority": 5
+    }
+  },
+  {
+    "source_ref": "PROBLEM_CHEQUE_BOUNCE",
+    "target_ref": "SRC_NIA_001:Section 138",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Criminal liability for cheque dishonour for insufficiency of funds",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "forum": "Judicial Magistrate First Class (JMFC)",
+      "statutory_notice_window": "30 days",
+      "payment_window": "15 days",
+      "complaint_filing_window": "30 days"
+    }
+  },
+  {
+    "source_ref": "PROBLEM_BUILDER_DELAY",
+    "target_ref": "SRC_RERA_001:Section 18",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Right of allottee to refund of amount paid with interest, or monthly interest for delayed possession",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "forum": "Real Estate Regulatory Authority (RERA) / Consumer Commission"
+    }
+  },
+  {
+    "source_ref": "PROBLEM_DOMESTIC_VIOLENCE",
+    "target_ref": "SRC_PWDVA_001:Section 12",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Application to Magistrate for protection orders, residence order, monetary relief, and custody",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "forum": "JMFC / Metropolitan Magistrate",
+      "prerequisite": "Domestic Incident Report (DIR)"
+    }
+  },
+  {
+    "source_ref": "PROBLEM_UNAUTHORIZED_UPI_DEBIT",
+    "target_ref": "SRC_RBI_UNAUTH_001",
+    "relationship_type": "APPLIES_TO_PROBLEM",
+    "description": "Zero customer liability if third-party fraud notified to bank within 3 working days",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "helpline": "1930",
+      "forum": "Banking Ombudsman / National Cyber Crime Reporting Portal"
+    }
+  },
+  {
+    "source_ref": "SRC_NIA_001:Section 138",
+    "target_ref": "DEADLINE:30_DAYS_NOTICE",
+    "relationship_type": "STATUTORY_DEADLINE",
+    "description": "Statutory demand notice must be dispatched in writing within 30 days of receiving cheque return memo from bank",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "days": 30,
+      "trigger": "Receipt of cheque dishonour memo"
+    }
+  },
+  {
+    "source_ref": "SRC_NIA_001:Section 142",
+    "target_ref": "DEADLINE:30_DAYS_COMPLAINT",
+    "relationship_type": "STATUTORY_DEADLINE",
+    "description": "Criminal complaint under Section 138 must be filed within 1 month (30 days) after the 15-day notice period expires",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "days": 30,
+      "trigger": "Expiry of 15 days from notice receipt"
+    }
+  },
+  {
+    "source_ref": "SRC_CPA_001:Section 69",
+    "target_ref": "DEADLINE:2_YEARS_CONSUMER",
+    "relationship_type": "STATUTORY_DEADLINE",
+    "description": "Consumer complaint must be filed within 2 years from date on which cause of action arose (extendable only on sufficient cause)",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "years": 2,
+      "trigger": "Date of deficiency/defect or cause of action"
+    }
+  },
+  {
+    "source_ref": "SRC_RTI_001:Section 7(1)",
+    "target_ref": "DEADLINE:30_DAYS_RTI",
+    "relationship_type": "STATUTORY_DEADLINE",
+    "description": "Public Information Officer must provide information within 30 days of application (or within 48 hours if concerning life or liberty)",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "standard_days": 30,
+      "life_liberty_hours": 48
+    }
+  },
+  {
+    "source_ref": "SRC_POSH_001:Section 9",
+    "target_ref": "DEADLINE:3_MONTHS_POSH",
+    "relationship_type": "STATUTORY_DEADLINE",
+    "description": "Complaint of sexual harassment must be made to Internal Committee within 3 months of incident (extendable by 3 months for reasons recorded in writing)",
+    "jurisdiction": "Union of India",
+    "metadata": {
+      "months": 3,
+      "extension_months": 3
+    }
+  },
+  {
+    "source_ref": "REMEDY_CHEQUE_BOUNCE",
+    "target_ref": "FORUM_JMFC_MM",
+    "relationship_type": "REMEDY_AUTHORITY",
+    "description": "Judicial Magistrate First Class (or Metropolitan Magistrate in presidency towns) within whose local jurisdiction the payee bank account is maintained",
+    "jurisdiction": "Union of India"
+  },
+  {
+    "source_ref": "REMEDY_RERA_DELAY",
+    "target_ref": "FORUM_STATE_RERA",
+    "relationship_type": "REMEDY_AUTHORITY",
+    "description": "State Real Estate Regulatory Authority (Karnataka RERA) for refund/interest; Adjudicating Officer for compensation",
+    "jurisdiction": "State of Karnataka / Union of India"
+  },
+  {
+    "source_ref": "REMEDY_CONSUMER_DEFICIENCY",
+    "target_ref": "FORUM_DISTRICT_CONSUMER_COMMISSION",
+    "relationship_type": "REMEDY_AUTHORITY",
+    "description": "District Consumer Disputes Redressal Commission (pecuniary jurisdiction up to Rs 50 lakh) via e-Daakhil",
+    "jurisdiction": "Union of India"
+  },
+  {
+    "source_ref": "REMEDY_KHATA_MUTATION_DISPUTE",
+    "target_ref": "FORUM_TAHSILDAR_AC",
+    "relationship_type": "REMEDY_AUTHORITY",
+    "description": "Tahsildar (Form 12 disputed mutation enquiry); First appeal before Assistant Commissioner under Section 136(2) Karnataka Land Revenue Act; Revision before Deputy Commissioner under Section 136(3)",
+    "jurisdiction": "State of Karnataka"
+  },
+  {
+    "source_ref": "REMEDY_PTCL_RESTITUTION",
+    "target_ref": "FORUM_AC_REVENUE",
+    "relationship_type": "REMEDY_AUTHORITY",
+    "description": "Assistant Commissioner of the Revenue Sub-division under Section 5 PTCL Act; Appeal lies before Deputy Commissioner of the District",
+    "jurisdiction": "State of Karnataka"
+  },
+  {
+    "source_ref": "REMEDY_MSME_DELAYED_PAYMENT",
+    "target_ref": "FORUM_MSEFC",
+    "relationship_type": "REMEDY_AUTHORITY",
+    "description": "Micro and Small Enterprises Facilitation Council (MSEFC) via MSME Samadhaan portal; conciliation followed by binding arbitration",
+    "jurisdiction": "Union of India"
+  }
+]

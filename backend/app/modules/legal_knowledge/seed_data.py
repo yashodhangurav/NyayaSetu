@@ -1123,4 +1123,120 @@ CURATED_LEGAL_SOURCES: List[Dict[str, Any]] = [
             },
         ],
     },
+    # ──────────────────────────────────────────────────────────────
+    # 25. Family Law: Muslim Women (Protection of Rights on Divorce) Act, 1986
+    # ──────────────────────────────────────────────────────────────
+    {
+        "title": "Muslim Women (Protection of Rights on Divorce) Act, 1986",
+        "source_type": "BARE_ACT",
+        "short_code": "MWD_1986",
+        "citation": "Act No. 25 of 1986",
+        "act_or_judgment_identifier": "Act No. 25 of 1986",
+        "jurisdiction": "Union of India",
+        "court": None,
+        "publication_date": date(1986, 5, 19),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://www.indiacode.nic.in/handle/123456789/1785",
+        "year": 1986,
+        "chunks": [
+            {
+                "section_number": "Section 3",
+                "clause_heading": "Mahr and maintenance to be paid to divorced Muslim woman",
+                "chunk_text": (
+                    "A divorced Muslim woman is entitled to a reasonable and fair provision and maintenance to be made and paid to her within the iddat period by her former husband. "
+                    "Under Danial Latifi (2001) 7 SCC 740, the Supreme Court established that this provision extends beyond iddat for her entire lifetime until remarriage."
+                ),
+            },
+        ],
+    },
+    # ──────────────────────────────────────────────────────────────
+    # 26. Civil & Property: Specific Relief Act, 1963
+    # ─────────────────────────────────────────────────────────────
+    {
+        "title": "Specific Relief Act, 1963",
+        "source_type": "BARE_ACT",
+        "short_code": "SRA_1963",
+        "citation": "Act No. 47 of 1963",
+        "act_or_judgment_identifier": "Act No. 47 of 1963",
+        "jurisdiction": "Union of India",
+        "court": None,
+        "publication_date": date(1963, 12, 13),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://www.indiacode.nic.in/handle/123456789/1583",
+        "year": 1963,
+        "chunks": [
+            {
+                "section_number": "Section 6",
+                "clause_heading": "Suit by person dispossessed of immovable property",
+                "chunk_text": (
+                    "If any person is dispossessed without his consent of immovable property otherwise than in due course of law, "
+                    "he may by summary suit recover possession within six months from dispossession, notwithstanding any title claimed by the defendant."
+                ),
+            },
+            {
+                "section_number": "Section 34 & 38",
+                "clause_heading": "Declaration of title and perpetual injunction",
+                "chunk_text": (
+                    "Under Anathula Sudhakar (2008), where the plaintiff title is under cloud and he is not in possession, "
+                    "a suit for bare injunction is not maintainable without seeking declaration of title and consequential recovery of possession."
+                ),
+            },
+        ],
+    },
+    # ──────────────────────────────────────────────────────────────
+    # 27. Commercial & Debt Recovery: MSMED Act, 2006
+    # ──────────────────────────────────────────────────────────────
+    {
+        "title": "Micro, Small and Medium Enterprises Development Act, 2006",
+        "source_type": "BARE_ACT",
+        "short_code": "MSMED_2006",
+        "citation": "Act No. 27 of 2006",
+        "act_or_judgment_identifier": "Act No. 27 of 2006",
+        "jurisdiction": "Union of India",
+        "court": None,
+        "publication_date": date(2006, 6, 16),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://msme.gov.in",
+        "year": 2006,
+        "chunks": [
+            {
+                "section_number": "Section 15 & 16",
+                "clause_heading": "Mandatory payment within 45 days and compound interest",
+                "chunk_text": (
+                    "Buyers must make payment to MSME suppliers within agreed terms not exceeding 45 days. Delayed payments attract "
+                    "mandatory compound interest with monthly rests at three times the RBI bank rate, referable to MSEFC Samadhaan."
+                ),
+            },
+        ],
+    },
+    # ──────────────────────────────────────────────────────────────
+    # 28. Landmark Precedent: Suraj Lamp & Industries (2012)
+    # ──────────────────────────────────────────────────────────────
+    {
+        "title": "Suraj Lamp & Industries Pvt. Ltd. v. State of Haryana",
+        "source_type": "COURT_JUDGMENT",
+        "short_code": "CASE_SURAJ_LAMP",
+        "citation": "(2012) 1 SCC 656",
+        "act_or_judgment_identifier": "(2012) 1 SCC 656",
+        "jurisdiction": "Supreme Court of India",
+        "court": "Supreme Court of India",
+        "publication_date": date(2011, 10, 11),
+        "last_verified_date": date(2026, 1, 1),
+        "document_version": "2026.1",
+        "official_source_url": "https://digiscr.sci.gov.in",
+        "year": 2011,
+        "chunks": [
+            {
+                "section_number": "Paragraph 16-19",
+                "clause_heading": "GPA and Agreement to Sell transactions do not convey title",
+                "chunk_text": (
+                    "The Supreme Court ruled that General Power of Attorney (GPA), Sale Agreement, or Will transactions do not convey any title "
+                    "or ownership interest in immovable property. Transfer can take place solely through a registered deed of conveyance."
+                ),
+            },
+        ],
+    },
 ]

@@ -451,6 +451,42 @@ Helpline: Call 15100 (toll-free national legal aid helpline) or visit the Distri
     except ImportError:
         pass
 
+    try:
+        from rag.ingest.family_law_sources import get_family_law_chunks
+        chunks.extend(get_family_law_chunks())
+    except ImportError:
+        pass
+
+    try:
+        from rag.ingest.property_karnataka_sources import get_property_karnataka_chunks
+        chunks.extend(get_property_karnataka_chunks())
+    except ImportError:
+        pass
+
+    try:
+        from rag.ingest.criminal_sanhitas_sources import get_criminal_sanhitas_chunks
+        chunks.extend(get_criminal_sanhitas_chunks())
+    except ImportError:
+        pass
+
+    try:
+        from rag.ingest.banking_consumer_labour_sources import get_banking_consumer_labour_chunks
+        chunks.extend(get_banking_consumer_labour_chunks())
+    except ImportError:
+        pass
+
+    try:
+        from rag.ingest.specialized_domains_sources import get_specialized_domain_chunks
+        chunks.extend(get_specialized_domain_chunks())
+    except ImportError:
+        pass
+
+    try:
+        from rag.ingest.expanded_precedents_sources import get_expanded_precedents_chunks
+        chunks.extend(get_expanded_precedents_chunks())
+    except ImportError:
+        pass
+
     return chunks
 
 

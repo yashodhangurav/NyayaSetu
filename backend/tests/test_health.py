@@ -19,4 +19,5 @@ async def test_health_check_endpoint(async_client: AsyncClient):
     assert "database" in data
     assert "status" in data["database"]
     assert "dialect" in data["database"]
-    assert data["database"]["dialect"] == "psycopg3"
+    # The configured database may be the SQLite development default or PostgreSQL.
+    assert data["database"]["dialect"] in ("psycopg3", "sqlite")

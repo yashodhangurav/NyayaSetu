@@ -12,12 +12,22 @@ NyayaSetu's AI Legal Assistant couples an asymmetric dual-path retrieval pipelin
 |---|---|---|
 | **Query Rewriter** | `backend/rag/search/query_rewriter.py` | Detects language (EN/KN/HI), classifies 37 legal domains, expands 500+ trilingual synonyms, performs concordance mapping, filters out-of-scope queries. |
 | **Concordance Engine** | `backend/rag/ingest/concordance_table.py` | Maps colonial criminal/civil statutes (IPC, CrPC, IEA) to 2023 Sanhitas (BNS, BNSS, BSA). |
-| **Lexical Index** | `backend/rag/search/bm25.py` | BM25 retrieval over Bare Act sections, numbers, and gazette identifiers. |
-| **Semantic Store** | `backend/rag/search/vector_store.py` / pgvector | Multilingual dense embeddings (`BAAI/bge-m3` or deterministic hashed vectors). |
+| **Lexical Index** | `backend/rag/index/bm25_index.py` | BM25 retrieval over Bare Act sections, numbers, and gazette identifiers. |
+| **Semantic Store** | `backend/rag/index/embeddings.py` / pgvector | Multilingual dense embeddings (`BAAI/bge-m3` or deterministic hashed vectors). |
 | **Hybrid Search** | `backend/rag/search/hybrid_search.py` | Reciprocal Rank Fusion ($k=60$) over lexical and vector hits; cross-encoder reranking; confidence gating ($\ge 0.45$). |
+| **Unified Retriever** | `backend/app/modules/legal_assistant/unified_retriever.py` | Single DB-first facade with bundled fallback, temporal validity, authority-aware ranking, RRF, and evidence sufficiency. |
+| **Source Acquisition** | `backend/app/modules/legal_knowledge/{source_registry,fetcher,discovery,sync_service}.py` | Opt-in, robots-aware official-source fetching, SSRF/content limits, bounded discovery, immutable versions, and review queue. |
 | **LLM Provider** | `backend/app/modules/legal_assistant/llm_provider.py` | Groq (`qwen/qwen3.8-27b`) or Gemini (`gemini-2.5-flash`), formatting structured JSON with decision badge, answer, 48-hour steps, and court deadlines. |
-| **Citation Validator** | `backend/app/modules/legal_assistant/citation_validator.py` | Checksum grounding against retrieved source chunks; flags unverified section numbers; sanitizes prose. |
-| **Service Layer** | `backend/app/modules/legal_assistant/service.py` | End-to-end orchestration, language translation, audit logging, and automated offline fallback. |
+| **Citation Validator** | `backend/app/modules/legal_assistant/citation_validator.py` | Checksum grounding, unverified section pruning, lexical claim-support diagnostics, and sanitization. |
+| **Embedding Provider** | `backend/app/modules/legal_assistant/embedding_provider.py` | Gemini/mock providers plus opt-in `sentence-transformers` neural provider with dimension validation; no silent mock fallback in production. |
+| **Observability** | `backend/app/modules/legal_assistant/observability.py` | Admin-only, content-free counters and optional local JSONL event sink. |
+| **Service Layer** | `backend/app/modules/legal_assistant/service.py` | End-to-end orchestration, audit logging, confidence downgrade, controlled abstention, and offline fallback. |
+
+### Generation budget and failure handling
+
+Groq generation is deliberately bounded for low-tier output-token quotas: `GROQ_MAX_COMPLETION_TOKENS` defaults to 800, context is capped by `GROQ_MAX_CONTEXT_CHUNKS`, `GROQ_MAX_CONTEXT_CHARS`, and `GROQ_MAX_CHUNK_CHARS`, and a rolling local counter tracks `GROQ_OUTPUT_TOKEN_BUDGET_PER_MINUTE` across requests. Retry behavior is configured by `GROQ_MAX_RETRIES`, `GROQ_RETRY_BACKOFF_SECONDS`, `GROQ_RETRY_JITTER_SECONDS`, and `GROQ_REQUEST_TIMEOUT_SECONDS`. HTTP 429 responses honour `Retry-After` (numeric seconds or HTTP date); otherwise the configured backoff with jitter is used. If the required wait exceeds the configured timeout, the service returns immediately.
+
+No provider failure is silently replaced with deterministic legal prose. `rate_limited`, `timeout`, `provider_unavailable`, and `generation_error` are returned as structured generation statuses with a safe user-facing message. Gemini uses the same status vocabulary through the provider abstraction; its output budget and retry settings are `GEMINI_MAX_COMPLETION_TOKENS`, `GEMINI_MAX_RETRIES`, `GEMINI_RETRY_BACKOFF_SECONDS`, and `GEMINI_REQUEST_TIMEOUT_SECONDS`. Only whitelisted, non-identifying case facts are summarized into generation context; raw chat history and direct identifiers are not sent to external providers. The provider is selected by `AI_PROVIDER`; the service never auto-upgrades to a paid model or assumes a higher account tier.
 
 ---
 
@@ -69,17 +79,20 @@ python scripts/seed_legal_sources.py
 
 ---
 
-## 4. Evaluation Benchmark Results
+## 4. Evaluation Results (executed regression harness)
 
-Evaluated against the standardized legal benchmark test set:
+The only executed evaluation in this upgrade is `backend/rag/eval/run_upgrade_eval.py` against 156 **generated, non-human-verified** items using the deterministic provider and the bundled corpus. See [`RAG_EVALUATION_REPORT.md`](RAG_EVALUATION_REPORT.md) and `backend/rag/eval/latest_upgrade_report.json`.
 
-| Evaluation Metric | Target Threshold | Measured Score | Evaluation Status |
-|---|---|---|---|
-| **Recall@5** | $\ge 85.0\%$ | **88.97%** | PASS (Exceeds Target) |
-| **Mean Reciprocal Rank (MRR)** | $\ge 0.70$ | **0.84** | PASS |
-| **Concordance Mapping Precision** | $100\%$ | **100.0%** | PASS (Zero Mismatches) |
-| **Repealed Law Leakage** | $0.0\%$ | **0.0%** | PASS (Safe Sanhita Transition) |
-| **Average Retrieval Latency** | $< 120\text{ ms}$ | **42 ms** | PASS |
+| Metric | Executed value | Interpretation |
+|---|---|---|
+| **Recall@5** | 0.8966 | Regression signal on generated items, not legal ground truth |
+| **MRR@5** | 0.8175 | Regression signal on generated items |
+| **Out-of-scope correct** | 11 / 11 | Deterministic gate behavior |
+| **Repealed-law leakage in results** | 0 | Bundled corpus filter |
+| **Claim-support ratio** | 1.0 | Lexical diagnostic, not legal reasoning |
+| **Quality gate** | `passed: false` | No human-verified ground truth |
+
+Concordance-mapping precision, production latency, live-provider answer quality, and live official-source verification were **not** benchmarked in this upgrade and are not claimed as verified.
 
 ---
 

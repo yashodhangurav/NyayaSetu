@@ -467,6 +467,100 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
         return results
 
 
+class LocalNeuralEmbeddingProvider(BaseEmbeddingProvider):
+    """Opt-in open-source neural embeddings via ``sentence-transformers``.
+
+    The model is loaded lazily and only when RAG_NEURAL_EMBEDDING_ENABLED=true.
+    A missing SDK or an invalid model/dimension fails loudly; it never falls back
+    silently to deterministic vectors. Reindexing is required when the model or
+    EMBEDDING_VECTOR_DIMENSION changes.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        dimension: int,
+        *,
+        device: Optional[str] = None,
+        batch_size: int = 32,
+    ) -> None:
+        self._model_name = model_name
+        self._dim = dimension
+        self._device = device
+        self._batch_size = max(1, batch_size)
+        self._model: Optional[Any] = None
+
+    @property
+    def dimension(self) -> int:
+        return self._dim
+
+    @property
+    def provider_name(self) -> str:
+        return f"LocalNeuralEmbeddingProvider({self._model_name})"
+
+    @property
+    def is_mock(self) -> bool:
+        return False
+
+    def _load_model(self) -> Any:
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError as exc:
+                raise RuntimeError(
+                    "RAG_NEURAL_EMBEDDING_ENABLED=true requires the optional dependency "
+                    "'sentence-transformers'. Install it explicitly or disable neural embeddings."
+                ) from exc
+            try:
+                self._model = SentenceTransformer(self._model_name, device=self._device)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Failed to load configured neural embedding model '{self._model_name}': {exc}"
+                ) from exc
+        return self._model
+
+    def _encode(self, texts: List[str], *, is_query: bool) -> List[List[float]]:
+        if not texts:
+            return []
+        model = self._load_model()
+        prefix = "query: " if is_query else "passage: "
+        prepared = [prefix + text.strip()[:2000] for text in texts]
+        try:
+            vectors = model.encode(
+                prepared,
+                batch_size=self._batch_size,
+                convert_to_numpy=True,
+                normalize_embeddings=False,
+                show_progress_bar=False,
+            )
+        except Exception as exc:
+            raise RuntimeError(f"Neural embedding generation failed: {exc}") from exc
+        return [
+            self._normalize_and_validate([float(value) for value in vector], label="neural embedding")
+            for vector in vectors
+        ]
+
+    def embed_query(self, query: str) -> List[float]:
+        if not query or not query.strip():
+            raise ValueError("Query text cannot be empty for embedding generation.")
+        return self._encode([query], is_query=True)[0]
+
+    def embed_document(self, text: str, title: Optional[str] = None) -> List[float]:
+        if not text or not text.strip():
+            raise ValueError("Document text cannot be empty for embedding generation.")
+        combined = f"{title or ''}\n{text}".strip()
+        return self._encode([combined], is_query=False)[0]
+
+    def embed_documents(self, texts: List[str], titles: Optional[List[str]] = None) -> List[List[float]]:
+        if not texts:
+            return []
+        combined = [
+            f"{(titles or [''] * len(texts))[i] or ''}\n{text}".strip()
+            for i, text in enumerate(texts)
+        ]
+        return self._encode(combined, is_query=False)
+
+
 # Active singleton instance
 _embedding_provider_instance: Optional[BaseEmbeddingProvider] = None
 
@@ -483,7 +577,13 @@ def get_embedding_provider(reload: bool = False) -> BaseEmbeddingProvider:
     if reload or _embedding_provider_instance is None:
         provider_name = settings.AI_PROVIDER.lower().strip() if settings.AI_PROVIDER else "mock"
 
-        if provider_name == "groq":
+        if settings.RAG_NEURAL_EMBEDDING_ENABLED:
+            _embedding_provider_instance = LocalNeuralEmbeddingProvider(
+                model_name=settings.EMBEDDING_MODEL,
+                dimension=settings.EMBEDDING_VECTOR_DIMENSION,
+                device=settings.RAG_NEURAL_EMBEDDING_DEVICE or None,
+            )
+        elif provider_name == "groq":
             _embedding_provider_instance = DeterministicMockEmbeddingProvider(
                 dimension=settings.EMBEDDING_VECTOR_DIMENSION
             )

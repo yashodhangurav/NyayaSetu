@@ -58,9 +58,9 @@ There is **no root package manager workspace**. Run frontend commands from `fron
 * **Runtime:** Python 3.12
 * **Framework:** FastAPI 0.115 + Pydantic v2
 * **ORM:** SQLAlchemy 2.0 (Asyncio)
-* **Driver:** Psycopg 3 (`psycopg[binary]>=3.2.0`)
-* **Database:** PostgreSQL 16 with PostGIS (`geoalchemy2`) and pgvector (`pgvector.sqlalchemy`)
-* **Migrations:** Alembic
+* **Driver:** Psycopg 3 (`psycopg[binary]>=3.2.0`) for PostgreSQL; `aiosqlite` for the SQLite development default
+* **Database:** PostgreSQL 16 with PostGIS (`geoalchemy2`) and pgvector (`pgvector.sqlalchemy`) in production; local development defaults to SQLite (`sqlite+aiosqlite:///./nyayasetu.db`, schema auto-created on startup)
+* **Migrations:** Alembic (PostgreSQL only)
 * **Password Hashing:** Argon2id (`argon2-cffi`)
 * **Tokens:** PyJWT (HS256) with database-tracked refresh rotation
 * **Testing:** Pytest 8.2 + pytest-asyncio + HTTPX (uses SQLite `:memory:` via `aiosqlite`)

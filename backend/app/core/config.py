@@ -5,6 +5,11 @@ from typing import List, Optional, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Repository backend root (…/NyayaSetu/backend). Used to anchor relative
+# SQLite file paths so the database is the same file regardless of the
+# directory the server is launched from.
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables and .env file."""
@@ -49,36 +54,70 @@ class Settings(BaseSettings):
             return value
         return ["*"]
 
-    # Database Configuration (PostgreSQL with Psycopg 3)
-    DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/nyayasetu"
+    # Database Configuration
+    # Default is a local SQLite file so the API runs with zero external
+    # services during development. Set DATABASE_URL to a PostgreSQL URL
+    # (postgresql+psycopg://…) to use PostgreSQL/PostGIS/pgvector instead.
+    DATABASE_URL: str = "sqlite+aiosqlite:///./nyayasetu.db"
     DATABASE_URL_SYNC: Optional[str] = None
     TEST_DATABASE_URL: str = "sqlite+aiosqlite:///./test.db"
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def assemble_database_url(cls, value: str) -> str:
-        """Ensure the async URL uses the psycopg dialect if postgresql:// is provided."""
+        """Normalize database URLs and anchor relative SQLite paths to the backend root."""
         if not value:
-            return "postgresql+psycopg://postgres:postgres@localhost:5432/nyayasetu"
+            return "sqlite+aiosqlite:///./nyayasetu.db"
         if value.startswith("postgresql://"):
             return value.replace("postgresql://", "postgresql+psycopg://", 1)
         if value.startswith("postgres://"):
             return value.replace("postgres://", "postgresql+psycopg://", 1)
         if value.startswith("postgresql+asyncpg://"):
             return value.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+        if value.startswith("sqlite"):
+            return cls._resolve_sqlite_url(value)
         return value
+
+    @staticmethod
+    def _resolve_sqlite_url(value: str) -> str:
+        """Convert a relative SQLite path into an absolute path under backend/."""
+        try:
+            from sqlalchemy.engine import make_url
+
+            url = make_url(value)
+            database = url.database
+            if not database or database == ":memory:":
+                return value
+            db_path = Path(database)
+            if not db_path.is_absolute():
+                db_path = (BACKEND_ROOT / db_path).resolve()
+            return str(url.set(database=db_path.as_posix()))
+        except Exception:
+            return value
+
+    @property
+    def is_sqlite(self) -> bool:
+        """True when the active database is SQLite."""
+        return self.DATABASE_URL.startswith("sqlite")
 
     @property
     def sync_database_url(self) -> str:
-        """Derive synchronous URL for Alembic migrations using psycopg."""
+        """Derive a synchronous URL for Alembic migrations."""
         if self.DATABASE_URL_SYNC and self.DATABASE_URL_SYNC.strip():
             url = self.DATABASE_URL_SYNC
             if url.startswith("postgresql+asyncpg://"):
                 return url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
             if url.startswith("postgresql://"):
                 return url.replace("postgresql://", "postgresql+psycopg://", 1)
+            if url.startswith("sqlite+aiosqlite://"):
+                return self._resolve_sqlite_url(url.replace("sqlite+aiosqlite://", "sqlite://", 1))
+            if url.startswith("sqlite://"):
+                return self._resolve_sqlite_url(url)
             return url
-        return self.DATABASE_URL.replace("postgresql+psycopg://", "postgresql+psycopg://", 1)
+        fallback = self.DATABASE_URL.replace("postgresql+psycopg://", "postgresql+psycopg://", 1)
+        if fallback.startswith("sqlite+aiosqlite://"):
+            return self._resolve_sqlite_url(fallback.replace("sqlite+aiosqlite://", "sqlite://", 1))
+        return fallback
 
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
@@ -93,9 +132,25 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "mock"  # "groq", "gemini" or "mock"
     GROQ_API_KEY: Optional[str] = None
     GROQ_LLM_MODEL: str = "qwen/qwen3.8-27b"
+    # Conservative defaults for low-tier / on-demand provider quotas. These are
+    # per-completion budgets, not assumptions about a higher account tier.
+    GROQ_MAX_COMPLETION_TOKENS: int = 800
+    GROQ_REQUEST_TIMEOUT_SECONDS: float = 20.0
+    GROQ_MAX_RETRIES: int = 2
+    GROQ_RETRY_BACKOFF_SECONDS: float = 2.0
+    GROQ_RETRY_JITTER_SECONDS: float = 1.0
+    GROQ_OUTPUT_TOKEN_BUDGET_PER_MINUTE: int = 15000
+    GROQ_OUTPUT_BUDGET_WINDOW_SECONDS: float = 60.0
+    GROQ_MAX_CONTEXT_CHUNKS: int = 5
+    GROQ_MAX_CONTEXT_CHARS: int = 8000
+    GROQ_MAX_CHUNK_CHARS: int = 1400
     GEMINI_API_KEY: str = ""
     GEMINI_LLM_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    GEMINI_MAX_COMPLETION_TOKENS: int = 800
+    GEMINI_REQUEST_TIMEOUT_SECONDS: float = 20.0
+    GEMINI_MAX_RETRIES: int = 2
+    GEMINI_RETRY_BACKOFF_SECONDS: float = 1.0
     EMBEDDING_PROVIDER: str = "multilingual"  # "multilingual", "gemini", "bge", "mock"
     EMBEDDING_MODEL: str = "BAAI/bge-m3"
     EMBEDDING_VECTOR_DIMENSION: int = 768
@@ -107,6 +162,31 @@ class Settings(BaseSettings):
     RAG_SEMANTIC_WEIGHT: float = 0.70
     RAG_LEXICAL_WEIGHT: float = 0.30
     RAG_MAX_SOURCES_LIMIT: int = 10
+
+    # Official-source acquisition (disabled by default; opt in operationally)
+    RAG_SOURCE_FETCH_ENABLED: bool = False
+    LEGAL_SOURCE_REGISTRY_CSV: str = ""
+    RAG_FETCH_TIMEOUT_SECONDS: float = 15.0
+    RAG_FETCH_MAX_BYTES: int = 12 * 1024 * 1024
+    RAG_FETCH_MAX_RETRIES: int = 2
+    RAG_FETCH_RETRY_BACKOFF_SECONDS: float = 1.0
+    RAG_FETCH_ALLOWED_CONTENT_TYPES: str = (
+        "application/pdf,text/html,text/plain,application/xml,text/xml,"
+        "application/xhtml+xml,application/octet-stream"
+    )
+    RAG_FETCH_USER_AGENT: str = "NyayaSetuLegalResearch/1.0 (+https://nyayasetu.in)"
+    RAG_SYNC_CONCURRENCY: int = 2
+    RAG_DISCOVERY_MAX_DOCUMENTS: int = 50
+    RAG_NEURAL_EMBEDDING_ENABLED: bool = False
+    RAG_NEURAL_EMBEDDING_DEVICE: str = ""
+    RAG_EMBEDDING_CACHE_SIZE: int = 512
+    RAG_OFFICIAL_FALLBACK_ENABLED: bool = False
+    RAG_EVIDENCE_MIN_SCORE: float = 0.45
+    RAG_EVIDENCE_MIN_CHUNKS: int = 1
+    RAG_CLAIM_SUPPORT_MIN_RATIO: float = 0.5
+    RAG_ABSTAIN_WITHOUT_CITATIONS: bool = True
+    RAG_OBSERVABILITY_ENABLED: bool = True
+    RAG_OBSERVABILITY_LOG_PATH: str = ""
 
     # Logging
     LOG_LEVEL: str = "INFO"

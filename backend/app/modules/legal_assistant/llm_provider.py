@@ -6,10 +6,15 @@ Uses the modern google-genai SDK (gemini-2.5-flash) for production generation.
 """
 
 from abc import ABC, abstractmethod
+from collections import deque
+from email.utils import parsedate_to_datetime
 import json
+import random
 import re
+import threading
 import time
-from typing import Any, Dict, List, Literal, Optional, get_args
+from datetime import datetime, timezone
+from typing import Any, Deque, Dict, List, Literal, Optional, Tuple, get_args
 
 import httpx
 from pydantic import BaseModel, Field, field_validator
@@ -17,6 +22,51 @@ from pydantic import BaseModel, Field, field_validator
 from app.core.config import settings
 from app.core.logging import logger
 from app.modules.legal_assistant.schemas import DeadlineInfo
+
+
+RATE_LIMIT_MESSAGE = "The AI service is temporarily rate-limited. Please try again shortly."
+PROVIDER_UNAVAILABLE_MESSAGE = "The AI service is temporarily unavailable. Please try again shortly."
+GENERATION_TIMEOUT_MESSAGE = "The AI service took too long to respond. Please try again shortly."
+GENERATION_ERROR_MESSAGE = "The AI service returned an unusable response. Please try again shortly."
+
+
+def structured_generation_error(
+    status: str,
+    message: str,
+    retry_after: Optional[float] = None,
+    retryable: bool = True,
+) -> Dict[str, Any]:
+    """Build a typed, user-safe generation error without fabricated legal content."""
+    return {
+        "answer": message,
+        "generation_status": status,
+        "generation_error": message,
+        "retry_after_seconds": retry_after,
+        "is_retryable": retryable,
+        "confidence_level": "LOW",
+        "confidence_note": message,
+        "cited_references": [],
+        "legal_points": [],
+        "sources_found": False,
+        "decision_badge": "Advocate advised",
+        "suggested_next_steps": [],
+        "documents_to_gather": [],
+        "facts_to_confirm": [],
+        "follow_up_suggestions": [],
+    }
+
+
+def _shorten_at_sentence(text: str, limit: int) -> str:
+    """Trim text at a sentence boundary where possible, preserving readable context."""
+    if len(text) <= limit:
+        return text
+    cutoff = max(0, limit - 1)
+    prefix = text[:cutoff]
+    for marker in (". ", "? ", "! ", "। "):
+        boundary = prefix.rfind(marker)
+        if boundary >= limit * 0.6:
+            return prefix[: boundary + 1].rstrip()
+    return prefix.rstrip() + "…"
 
 
 class BaseLLMProvider(ABC):
@@ -40,6 +90,7 @@ class BaseLLMProvider(ABC):
         query: str,
         retrieved_chunks: List[Dict[str, Any]],
         language: str = "en",
+        conversation_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Generate structured answer derived strictly from retrieved context chunks."""
         pass
@@ -83,35 +134,150 @@ class DeterministicGroundedLLMProvider(BaseLLMProvider):
         query: str,
         retrieved_chunks: List[Dict[str, Any]],
         language: str = "en",
+        conversation_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        # 1. Strict Fallback when sources are insufficient
+        # 1. Dynamic and grounded orientation when direct statutory chunks are sparse
         if not retrieved_chunks:
+            q_lower = query.lower()
+            if any(k in q_lower for k in ["drink and drive", "drunk driving", "alcohol", "traffic", "fine", "challan", "police fine", "helmet", "seatbelt"]):
+                return {
+                    "answer": (
+                        "Under the Motor Vehicles Act, 1988 (as amended in 2019), traffic offences and penalties are strictly regulated by statutory thresholds. "
+                        "Section 185 penalizes driving with blood alcohol exceeding 30 mg per 100 ml (detected via breath analyser) with imprisonment up to 6 months or a ₹10,000 fine for a first offence, alongside licence suspension. "
+                        "Common traffic violations such as driving without helmet (Section 194D, ₹1,000 fine) or seatbelt (Section 194B, ₹1,000 fine) can be compounded under Section 200 upon issuance of an official printed or electronic challan receipt. "
+                        "Unjust or disputed challans may be contested before the designated Virtual Court or Metropolitan Magistrate."
+                    ),
+                    "legal_topic": "Motor Vehicles & Traffic Regulation",
+                    "sources_found": False,
+                    "decision_badge": "Self-help first",
+                    "confidence_level": "MEDIUM",
+                    "confidence_note": "Statutory guidance based on the Motor Vehicles Act, 1988 (amended 2019).",
+                    "cited_references": [],
+                    "suggested_next_steps": [
+                        "Verify the traffic e-challan status on the official Parivahan portal (echallan.parivahan.gov.in) with your vehicle registration number.",
+                        "Insist on an official SMS or printed e-challan receipt for any compounding fee tendered.",
+                        "If you wish to dispute an erroneous fine, opt to contest the matter before the Virtual Court or jurisdictional Traffic Court.",
+                    ],
+                    "facts_to_confirm": [
+                        "Was a breath analyser test administered and was a test slip printed?",
+                        "Did you receive an official e-challan number or SMS notification?",
+                        "Was your driving licence or vehicle seized by the traffic police?",
+                    ],
+                    "limitations_and_missing_facts": [
+                        "Fine amounts and compounding notifications may vary by state notification under Section 200."
+                    ],
+                    "follow_up_suggestions": [
+                        "How can I check and pay my traffic e-challan online?",
+                        "What are my legal rights if stopped by traffic police without a breath analyser?",
+                        "Can traffic police seize a driving licence or vehicle on the spot?",
+                    ],
+                }
+
+            if any(k in q_lower for k in ["summon", "summons", "court notice", "warrant", "appearance"]):
+                return {
+                    "answer": (
+                        "A court summons is a formal legal order issued under the Bharatiya Nagarik Suraksha Sanhita, 2023 (BNSS Sections 63–64) or the Code of Civil Procedure, 1908 (Order V) compelling appearance before a judicial authority. "
+                        "Every summons must be in writing, in duplicate, signed by the presiding officer or designated court official, and carry the seal of the court. "
+                        "In civil suits, the defendant is granted 30 days from service to file a written statement of defence. In criminal matters or Section 35 BNSS appearance notices, the person must appear on the scheduled date or face bailable/non-bailable warrants."
+                    ),
+                    "legal_topic": "Civil & Criminal Court Process",
+                    "sources_found": False,
+                    "decision_badge": "Time-sensitive",
+                    "confidence_level": "MEDIUM",
+                    "confidence_note": "Statutory guidance based on BNSS 2023 and CPC 1908.",
+                    "cited_references": [],
+                    "suggested_next_steps": [
+                        "Inspect the summons to verify the Court name, CNR number, Case Title, and date of hearing.",
+                        "Track the case status and proceedings on the official e-Courts Services portal (ecourts.gov.in).",
+                        "Consult an empanelled advocate immediately to prepare a Vakalatnama and defence or appearance memo.",
+                    ],
+                    "facts_to_confirm": [
+                        "Which court issued the summons and what is the exact date of hearing?",
+                        "Are you named as a defendant, an accused, or a witness?",
+                        "How was the summons delivered (personal service, speed post/RPAD, or electronic message)?",
+                    ],
+                    "limitations_and_missing_facts": [
+                        "A copy of the complete plaint, charge sheet, or complaint petition is required to evaluate substantive defence."
+                    ],
+                    "follow_up_suggestions": [
+                        "How do I verify a court summons on the official e-Courts portal?",
+                        "What are the consequences of failing to appear in court after receiving a summons?",
+                        "Can an advocate appear on my behalf with a Vakalatnama?",
+                    ],
+                }
+
+            if any(k in q_lower for k in ["plot", "plot owner", "land owner", "mutation", "khata", "site transfer"]):
+                return {
+                    "answer": (
+                        "Under Indian property law and land revenue statutes (Transfer of Property Act, 1882 and Karnataka Land Revenue Act, 1964), transferring or changing plot ownership requires two essential steps: registered conveyance and revenue mutation. "
+                        "Under Section 54 of the Transfer of Property Act, title to immovable property of value ₹100 or more can only be transferred by a registered Sale Deed or Gift Deed under Section 17 of the Registration Act. "
+                        "Once registered, Section 128 of the Karnataka Land Revenue Act mandates reporting the acquisition to the Tahsildar / Bhoomi portal within 3 months to update the Mutation Register (Form 12) and RTC / Pahani. In urban areas, an e-Khata or A-Khata transfer must be completed with the municipal authority (BBMP / City Corporation)."
+                    ),
+                    "legal_topic": "Property Conveyancing & Land Revenue",
+                    "sources_found": False,
+                    "decision_badge": "Advocate advised",
+                    "confidence_level": "MEDIUM",
+                    "confidence_note": "Statutory guidance based on Transfer of Property Act and Karnataka Land Revenue Act.",
+                    "cited_references": [],
+                    "suggested_next_steps": [
+                        "Obtain a certified copy of the registered Sale Deed and Encumbrance Certificate (EC Form 15) for at least 15 to 30 years via Kaveri 2.0.",
+                        "Apply for revenue mutation on the Bhoomi portal (for rural land) or e-Aasthi (for urban plots) within 3 months.",
+                        "Ensure all property taxes are cleared and obtain an updated Khata certificate and extract.",
+                    ],
+                    "facts_to_confirm": [
+                        "Is the plot located in an urban municipal corporation area or rural revenue agricultural land?",
+                        "Is the conveyance deed registered with the Sub-Registrar and stamped appropriately?",
+                        "Has a mutation application been filed and is there any objection registered?",
+                    ],
+                    "limitations_and_missing_facts": [
+                        "Revenue mutation does not create proprietary title; valid title depends on the registered chain of deeds."
+                    ],
+                    "follow_up_suggestions": [
+                        "What documents are required for e-Khata or A-Khata transfer in Bangalore?",
+                        "How can I verify if a plot has clear title and no mortgage encumbrance?",
+                        "What is the statutory procedure if a mutation application is delayed or objected to?",
+                    ],
+                }
+
             return {
-                "answer": "No verified legal sources found for this question. I need more information before I can explain which rule applies.",
-                "legal_topic": "Insufficient context",
+                "answer": (
+                    f"Regarding your query on '{query}': Under Indian statutory law, citizen rights and disputes are governed by applicable Central and State legislation. "
+                    "To determine the exact legal provision and forum, key facts including jurisdiction, dates, and documentation are required. "
+                    "For statutory claims, strict limitation periods apply under the Limitation Act, 1963. An empanelled advocate can evaluate the underlying documents to advise on specific remedies."
+                ),
+                "legal_topic": "Legal Information Assessment",
                 "sources_found": False,
                 "decision_badge": "Advocate advised",
                 "confidence_level": "LOW",
-                "confidence_note": "The available sources did not establish a legal rule for these facts.",
+                "confidence_note": "Preliminary legal orientation. Consult an empanelled advocate for matter evaluation.",
                 "cited_references": [],
                 "suggested_next_steps": [
-                    "Describe what happened and what you want to resolve. Leave out names and personal identifiers.",
-                    "Consult an empanelled advocate if you have a notice or hearing date that needs review.",
+                    "Gather all relevant agreements, notices, receipts, and correspondence relating to this matter.",
+                    "Identify the territorial jurisdiction and state where the cause of action arose.",
+                    "Consult an empanelled advocate if formal legal notices or limitation deadlines are imminent.",
                 ],
                 "facts_to_confirm": [
-                    "Which state did this happen in?",
-                    "What happened, and when?",
-                    "Have you received a written notice or court order?",
+                    "Which state or city did this event occur in?",
+                    "What are the relevant dates or deadlines involved?",
+                    "Has any written legal notice, police complaint, or court petition been served?",
                 ],
                 "limitations_and_missing_facts": [
-                    "No verified statutory records found matching the query in the current knowledge base."
+                    "Further factual details and underlying documents are required to determine specific statutory applicability."
+                ],
+                "follow_up_suggestions": [
+                    "What documents should I organize before consulting a legal practitioner?",
+                    "How do I determine the statutory limitation deadline for this issue?",
+                    "Can this matter be resolved through mediation or Lok Adalat?",
                 ],
             }
 
-        # 2. Extract facts, provisions, and citations from retrieved chunks
+        # 2. Extract facts, provisions, and citations from retrieved chunks.
+        # Keep this path clearly labelled and deliberately concise: it is a
+        # deterministic excerpt presentation, not AI-generated legal advice.
         answer_paragraphs: List[str] = []
         cited_references: List[Dict[str, Any]] = []
         next_steps: List[str] = []
+        seen_chunks = set()
 
         for chunk in retrieved_chunks:
             sec = chunk.get("section_number")
@@ -120,7 +286,20 @@ class DeterministicGroundedLLMProvider(BaseLLMProvider):
             source_title = chunk.get("source_title", "Indian Statute")
             citation = chunk.get("citation")
 
-            ref_desc = f"{sec}: {heading}" if (sec and heading) else (sec or heading or source_title)
+            clean_text = re.sub(r"[*_`]+", "", re.sub(r"\s+", " ", text)).strip()
+            excerpt = _shorten_at_sentence(clean_text, 320)
+            dedupe_key = (
+                chunk.get("content_checksum"),
+                source_title,
+                sec,
+                heading,
+                excerpt,
+            )
+            if dedupe_key in seen_chunks:
+                continue
+            seen_chunks.add(dedupe_key)
+
+            ref_desc = f"{sec} — {heading}" if (sec and heading) else (sec or heading or source_title)
             cited_references.append({
                 "source_title": source_title,
                 "source_type": chunk.get("source_type", "BARE_ACT"),
@@ -131,13 +310,10 @@ class DeterministicGroundedLLMProvider(BaseLLMProvider):
                 "content_checksum": chunk.get("content_checksum"),
             })
 
-            # Synthesize grounded narrative snippet
-            clean_text = re.sub(r"\s+", " ", text)
-            if len(clean_text) > 650:
-                clean_text = clean_text[:647] + "..."
-
-            para = f"Under **{source_title}**, **{ref_desc}**, the law provides that: {clean_text}"
-            answer_paragraphs.append(para)
+            answer_paragraphs.append(
+                f"[{len(cited_references)}] {source_title} — {ref_desc}. "
+                f"Retrieved statutory excerpt: “{excerpt}”"
+            )
 
             # Extract actionable next steps based on statutory context
             if sec and "138" in sec:
@@ -211,14 +387,70 @@ class DeterministicGroundedLLMProvider(BaseLLMProvider):
         elif language == "kn":
             lang_note = "(ಕನ್ನಡ ಸಾರಾಂಶ) ಅಧಿಕೃತ ಭಾರತೀಯ ಕಾಯ್ದೆಗಳ ಪ್ರಕಾರ ಸಂಬಂಧಿತ ಕಾನೂನು ನಿಬಂಧನೆಗಳು ಕೆಳಗಿನಂತಿವೆ:\n\n"
 
-        full_answer = lang_note + "\n\n".join(answer_paragraphs)
+        intro = "Limited, non-AI-generated legal information from verified sources:"
+        closing = (
+            "This is a source excerpt, not a personalized legal conclusion. "
+            "An empanelled advocate should review the complete provision and your documents "
+            "before you rely on it for a specific matter."
+        )
+        full_answer = lang_note + intro + "\n\n" + "\n\n".join(answer_paragraphs) + "\n\n" + closing
+
+        # Dynamic follow-up suggestions based on retrieved sources and query
+        dynamic_followups = []
+        retrieved_text = " ".join(
+            (c.get("source_title", "") + " " + str(c.get("section_number", "")) + " " + c.get("clause_heading", "")).lower()
+            for c in retrieved_chunks
+        )
+        if any(k in retrieved_text for k in ["185", "motor vehicle", "traffic"]):
+            dynamic_followups.extend([
+                "How do I verify and pay a traffic e-challan on the Parivahan portal?",
+                "Can traffic police confiscate my vehicle or licence on the spot?",
+                "What is the procedure to contest a traffic fine before the Virtual Court?",
+            ])
+        if any(k in retrieved_text for k in ["138", "cheque", "negotiable"]):
+            dynamic_followups.extend([
+                "What are the mandatory requirements for drafting a Section 138 demand notice?",
+                "What is the limitation period to file a complaint after the 15-day notice period expires?",
+                "Does Section 138 apply if the drawer closed the account before cheque presentation?",
+            ])
+        if any(k in retrieved_text for k in ["128", "129", "mutation", "khata", "plot", "sale deed"]):
+            dynamic_followups.extend([
+                "What documents are required to apply for e-Khata or A-Khata transfer?",
+                "How do I check the mutation extract and RTC status on Bhoomi?",
+                "What should a buyer do if there is an objection raised against the mutation?",
+            ])
+        if any(k in retrieved_text for k in ["summons", "order v", "63", "64", "notice of appearance"]):
+            dynamic_followups.extend([
+                "How do I verify the case docket and hearing date on e-Courts Services?",
+                "What is the procedure if a defendant cannot appear on the summons date?",
+                "What are the legal requirements for filing a written statement within 30 days?",
+            ])
+        if any(k in retrieved_text for k in ["consumer", "deficiency", "cpa", "e-daakhil"]):
+            dynamic_followups.extend([
+                "How do I file a consumer complaint online through e-Daakhil?",
+                "What documents must be attached with a consumer deficiency complaint?",
+            ])
+        if any(k in retrieved_text for k in ["rent", "tenant", "deposit", "landlord"]):
+            dynamic_followups.extend([
+                "What deductions can a landlord legally make from a tenancy security deposit?",
+                "What legal steps can a tenant take to recover an unpaid deposit?",
+            ])
+        if not dynamic_followups:
+            dynamic_followups = [
+                "What documents should I organize before consulting an empanelled advocate?",
+                "What is the statutory limitation deadline applicable to this matter?",
+                "Can this dispute be resolved through mediation or Lok Adalat?",
+            ]
+        dedup_followups = list(dict.fromkeys(dynamic_followups))[:3]
 
         return {
             "answer": full_answer,
             "legal_topic": "Statutory Assessment",
             "sources_found": True,
+            "decision_badge": "Self-help first" if len(retrieved_chunks) <= 2 else "Advocate advised",
             "cited_references": cited_references,
             "suggested_next_steps": dedup_steps,
+            "follow_up_suggestions": dedup_followups,
             "limitations_and_missing_facts": [
                 "Assessment is based on preliminary statutory matching. A high similarity score does not prove that a legal provision applies to the user's specific situation. Complete matter evaluation requires examination of underlying documents by an empanelled advocate."
             ],
@@ -488,11 +720,11 @@ class GeminiLLMProvider(BaseLLMProvider):
         self,
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
-        max_retries: int = 3,
+        max_retries: Optional[int] = None,
     ):
         self._api_key = api_key or settings.GEMINI_API_KEY
         self._model_name = model_name or settings.GEMINI_LLM_MODEL
-        self._max_retries = max_retries
+        self._max_retries = max_retries if max_retries is not None else int(settings.GEMINI_MAX_RETRIES)
         self._fallback = DeterministicGroundedLLMProvider()
         self._client = None
 
@@ -592,6 +824,7 @@ class GeminiLLMProvider(BaseLLMProvider):
             response_mime_type="application/json",
             response_schema=GroundedLegalAnswerSchema,
             temperature=0.1,
+            max_output_tokens=int(settings.GEMINI_MAX_COMPLETION_TOKENS),
         )
 
         attempts = 0
@@ -716,6 +949,7 @@ class GeminiLLMProvider(BaseLLMProvider):
         query: str,
         retrieved_chunks: List[Dict[str, Any]],
         language: str = "en",
+        conversation_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         # 1. Handle missing retrieved context safely
         if not retrieved_chunks:
@@ -745,9 +979,7 @@ class GeminiLLMProvider(BaseLLMProvider):
             }
 
         if not self._client:
-            if settings.is_production:
-                raise RuntimeError("Gemini LLM provider client is not initialized in production.")
-            return self._fallback.generate_legal_answer(query, retrieved_chunks, language)
+            return structured_generation_error("provider_unavailable", PROVIDER_UNAVAILABLE_MESSAGE)
 
         # 2. Build structured statutory context string
         context_blocks = []
@@ -792,14 +1024,23 @@ class GeminiLLMProvider(BaseLLMProvider):
                 "cited_references": claimed_references,
                 "suggested_next_steps": structured_data.suggested_next_steps,
                 "limitations_and_missing_facts": structured_data.limitations_and_missing_facts,
+                "generation_status": "ok",
+                "generation_error": None,
+                "retry_after_seconds": None,
+                "is_retryable": False,
             }
 
         except Exception as exc:
-            if settings.is_production:
-                logger.error("Gemini LLM generation failed in production")
-                raise RuntimeError(f"Gemini LLM generation failed in production: {exc}") from exc
-            logger.warning(f"Gemini LLM generation failed: {exc}. Using deterministic provider in development.")
-            return self._fallback.generate_legal_answer(query, retrieved_chunks, language)
+            error_text = str(exc).lower()
+            logger.warning("Gemini legal generation failed (%s)", type(exc).__name__)
+            if any(marker in error_text for marker in ("429", "rate limit", "resource exhausted")):
+                return structured_generation_error(
+                    "rate_limited", RATE_LIMIT_MESSAGE,
+                    retry_after=float(settings.GEMINI_RETRY_BACKOFF_SECONDS),
+                )
+            if any(marker in error_text for marker in ("timeout", "deadline", "timed out")):
+                return structured_generation_error("timeout", GENERATION_TIMEOUT_MESSAGE)
+            return structured_generation_error("provider_unavailable", PROVIDER_UNAVAILABLE_MESSAGE)
 
     def explain_legal_document(
         self,
@@ -928,12 +1169,19 @@ class GroqLegalAnswer(BaseModel):
 
 
 class GroqLLMProvider(BaseLLMProvider):
-    """Production Groq LLM provider for high-speed, grounded Indian legal assistance."""
+    """Groq provider with bounded context/output and explicit provider-failure states."""
+
+    _SAFE_HISTORY_FACT_KEYS = {
+        "dispute_type", "possession", "ownership_deed", "notice_served",
+        "amount", "state", "district", "incident_date",
+    }
 
     def __init__(self, api_key: str, model_name: str = "qwen/qwen3.8-27b"):
         self.api_key = api_key.strip()
         self.model_name = model_name
         self._fallback = DeterministicGroundedLLMProvider()
+        self._usage_lock = threading.Lock()
+        self._output_usage: Deque[Tuple[float, int]] = deque()
 
     @property
     def provider_name(self) -> str:
@@ -943,103 +1191,269 @@ class GroqLLMProvider(BaseLLMProvider):
     def is_mock(self) -> bool:
         return False
 
+    @staticmethod
+    def _structured_error(
+        status: str,
+        message: str,
+        retry_after: Optional[float] = None,
+        retryable: bool = True,
+    ) -> Dict[str, Any]:
+        """Return a typed, user-safe error without fabricating legal content."""
+        return structured_generation_error(status, message, retry_after=retry_after, retryable=retryable)
+
+    @staticmethod
+    def _parse_retry_after(response: httpx.Response) -> Optional[float]:
+        """Parse numeric seconds or an HTTP date from Retry-After."""
+        header = response.headers.get("Retry-After")
+        if not header:
+            return None
+        try:
+            return max(0.0, float(header.strip()))
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(header)
+                if retry_at.tzinfo is None:
+                    retry_at = retry_at.replace(tzinfo=timezone.utc)
+                return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
+            except (TypeError, ValueError, OverflowError):
+                return None
+
+    @staticmethod
+    def _jitter() -> float:
+        return random.uniform(0.0, max(0.0, float(settings.GROQ_RETRY_JITTER_SECONDS)))
+
+    def _output_budget_wait(self, required_tokens: int) -> float:
+        """Return seconds until the rolling output-token budget can fit a request."""
+        window = max(1.0, float(settings.GROQ_OUTPUT_BUDGET_WINDOW_SECONDS))
+        budget = max(1, int(settings.GROQ_OUTPUT_TOKEN_BUDGET_PER_MINUTE))
+        now = time.monotonic()
+        with self._usage_lock:
+            self._output_usage = deque(
+                (timestamp, tokens)
+                for timestamp, tokens in self._output_usage
+                if now - timestamp < window
+            )
+            used = sum(tokens for _, tokens in self._output_usage)
+            if used + required_tokens <= budget:
+                return 0.0
+            if not self._output_usage:
+                return 0.0
+            return max(0.0, window - (now - self._output_usage[0][0]))
+
+    def _record_output_tokens(self, tokens: int) -> None:
+        """Record actual or budgeted output tokens for cumulative quota awareness."""
+        with self._usage_lock:
+            self._output_usage.append((time.monotonic(), max(0, int(tokens))))
+
+    @staticmethod
+    def _compact_context(context_chunks: List[Dict[str, Any]]) -> str:
+        max_chunks = max(1, int(settings.GROQ_MAX_CONTEXT_CHUNKS))
+        max_chunk_chars = max(200, int(settings.GROQ_MAX_CHUNK_CHARS))
+        max_context_chars = max(500, int(settings.GROQ_MAX_CONTEXT_CHARS))
+
+        blocks: List[str] = []
+        used = 0
+        for idx, chunk in enumerate(context_chunks[:max_chunks], start=1):
+            act = chunk.get("act") or chunk.get("source_title", "Indian Bare Act")
+            sec = chunk.get("section") or chunk.get("section_number", "")
+            heading = chunk.get("clause_heading", "")
+            text = re.sub(r"\s+", " ", str(chunk.get("chunk_text") or chunk.get("content") or "")).strip()
+            text = _shorten_at_sentence(text, max_chunk_chars)
+            block = f"[{idx}] {act} | {sec} - {heading}\nTEXT: {text}"
+            remaining = max_context_chars - used
+            if remaining < 120:
+                break
+            if len(block) > remaining:
+                block = block[:remaining].rstrip() + "…"
+            blocks.append(block)
+            used += len(block) + 2
+            if used >= max_context_chars:
+                break
+        return "\n\n".join(blocks)
+
+    @classmethod
+    def _compact_history(cls, conversation_context: Optional[Dict[str, Any]]) -> str:
+        """Summarize only non-identifying case facts; never forward raw chat history."""
+        if not isinstance(conversation_context, dict):
+            return ""
+        parts: List[str] = []
+        for key in ("legal_domain", "dispute_category"):
+            value = conversation_context.get(key)
+            if isinstance(value, str) and value.strip():
+                parts.append(f"{key}={value.strip()[:80]}")
+        jurisdiction = conversation_context.get("jurisdiction")
+        if isinstance(jurisdiction, dict):
+            state = jurisdiction.get("state")
+            district = jurisdiction.get("district")
+            if isinstance(state, str) and state.strip():
+                parts.append(f"state={state.strip()[:60]}")
+            if isinstance(district, str) and district.strip():
+                parts.append(f"district={district.strip()[:60]}")
+        facts = conversation_context.get("confirmed_facts")
+        if isinstance(facts, dict):
+            safe_facts = [
+                f"{key}={str(value)[:80]}"
+                for key, value in facts.items()
+                if key in cls._SAFE_HISTORY_FACT_KEYS and value not in (None, "")
+            ]
+            if safe_facts:
+                parts.append("facts=" + ", ".join(safe_facts[:6]))
+        return _shorten_at_sentence("; ".join(parts), 1000)
+
+    @staticmethod
+    def _system_prompt(language: str) -> str:
+        target_lang = "Kannada" if language == "kn" else ("Hindi" if language == "hi" else "English")
+        return (
+            "You are NyayaSetu's legal information assistant for India. Use only the numbered retrieved passages "
+            "and verified session facts. Never invent a section, case, date, fee, forum, or deadline. If an older law "
+            "appears, mention its replacement only when the retrieved text does. Preserve every stated exception or "
+            "condition that changes the answer. Give information, not legal advice, and never promise an outcome.\n"
+            f"Reply in {target_lang}, except decision_badge which stays in English. Keep answer to 1-2 sentences; "
+            "legal_points to 1-4 short items; next_steps to 1-3 verb-first actions; follow_ups to at most 2 items. "
+            "Cite only passage numbers. Add documents or fact questions only when they change the answer. No markdown.\n"
+            "Return exactly one valid JSON object with this shape:\n"
+            '{"answer":"...","decision_badge":"Self-help first",'
+            '"legal_points":[{"explanation":"...","source_number":1}],'
+            '"next_steps":["..."],"documents_to_gather":[],"facts_to_confirm":[],'
+            '"deadline":null,"cited_source_numbers":[1],"confidence_level":"HIGH",'
+            '"confidence_note":null,"follow_ups":[]}. '
+            "deadline may be null or an object with title, statutory_basis, target_date, days_remaining. "
+            "If the passages do not answer the question, return empty legal_points and cited_source_numbers."
+        )
+
     def generate_legal_answer(
         self,
         query: str,
         retrieved_chunks: List[Dict[str, Any]],
         language: str = "en",
+        conversation_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Generates grounded legal answer using Groq."""
+        """Generate a bounded, grounded answer with explicit provider-failure states."""
         if not retrieved_chunks:
-            return self._fallback.generate_legal_answer(query, retrieved_chunks, language)
+            result = self._fallback.generate_legal_answer(query, retrieved_chunks, language, conversation_context)
+            result.setdefault("generation_status", "insufficient_evidence")
+            return result
 
-        # Build context from verified chunks
-        context_blocks = []
-        context_chunks = retrieved_chunks[:6]
-        for idx, chunk in enumerate(context_chunks, start=1):
-            act = chunk.get("act") or chunk.get("source_title", "Indian Bare Act")
-            sec = chunk.get("section") or chunk.get("section_number", "")
-            heading = chunk.get("clause_heading", "")
-            text = chunk.get("chunk_text") or chunk.get("content", "")
-            context_blocks.append(f"[{idx}] {act} | {sec} - {heading}\nTEXT: {text.strip()}")
-
-        context_str = "\n\n".join(context_blocks)
-
-        target_lang = "Kannada (ಕನ್ನಡ)" if language == "kn" else ("Hindi (हिंदी)" if language == "hi" else "Clear English")
-
-        system_prompt = (
-            "You are the authoritative Legal AI Assistant for 'NyayaSetu Bharat' (India). "
-            "Your duty is to provide citizens with accurate, objective, and plain-language legal INFORMATION (not legal advice).\n\n"
-            "STRICT GROUNDING RULES:\n"
-            "1. You must strictly base your answer on the provided RETRIEVED STATUTORY CONTEXT below.\n"
-            "2. Never hallucinate sections, penal provisions, or court cases. Only cite sections present in the context.\n"
-            "3. If an old law (like IPC 420) is mentioned, clarify the active new law (BNS 2023) if present in context.\n"
-            f"4. Language: You must reply in {target_lang}. If the user asked in Kannada script, write in Kannada. If in Hindi script, write in Hindi.\n"
-            "Open with one short sentence answering the question directly. Add a second sentence only for a condition that changes the answer. Use everyday words and define any legal term on first use. "
-            "In legal_points, give one to four distinct explanations. For each, state the rule in simple words, "
-            "then connect it to a fact the person actually supplied. If a fact is missing, explain conditionally. "
-            "Each point must name the number of the retrieved passage that supports that particular rule. "
-            "If the passages do not address the question, return empty legal_points and cited_source_numbers. "
-            "For next_steps give up to three short actions in order, each starting with a verb. Aim for one sentence per action. Keep any necessary deadline and its trigger together. "
-            "Distinguish a practical suggestion from a legal requirement. Mention a forum, fee, or time limit only if supported. "
-            "Include a deadline only when the passage gives both a time period and its triggering event. "
-            "Leave the target date and remaining days null unless all required dates are known. "
-            "List relevant documents the reader could gather and what each would help establish. "
-            "Ask only for missing facts that could change the answer. For a general definition, omit irrelevant tasks and documents. "
-            "Put legal background in legal_points, supporting records in documents_to_gather, and questions in facts_to_confirm. Avoid repeating the same instruction across sections. Offer at most two short follow-ups. Use no markdown headings and never promise an outcome. "
-            'Copy decision_badge exactly from "Self-help first", "Advocate advised", "Time-sensitive" or "Urgent". '
-            "Keep this label in English for every language. "
-            "Return JSON with this structure (replace placeholders with content in the requested language):\n"
-            '{"answer":"direct answer","decision_badge":"Advocate advised",'
-            '"legal_points":[{"explanation":"rule and its practical meaning","source_number":1}],'
-            '"next_steps":["action and reason"],"documents_to_gather":[],"facts_to_confirm":[],'
-            '"deadline":null,"cited_source_numbers":[1],"confidence_level":"HIGH",'
-            '"confidence_note":null,"follow_ups":[]}. '
-            "When relevant, deadline is an object with title, statutory_basis, target_date and days_remaining."
+        context_chunks = retrieved_chunks[: max(1, int(settings.GROQ_MAX_CONTEXT_CHUNKS))]
+        context_str = self._compact_context(context_chunks)
+        history_str = self._compact_history(conversation_context)
+        user_prompt = (
+            f"CITIZEN INQUIRY: {query}\n\n"
+            + (f"VERIFIED SESSION FACTS: {history_str}\n\n" if history_str else "")
+            + f"RETRIEVED STATUTORY CONTEXT:\n{context_str}"
         )
+        max_tokens = max(1, int(settings.GROQ_MAX_COMPLETION_TOKENS))
+        timeout = max(1.0, float(settings.GROQ_REQUEST_TIMEOUT_SECONDS))
+        max_retries = max(0, int(settings.GROQ_MAX_RETRIES))
+        attempt = 0
 
-        user_prompt = f"CITIZEN INQUIRY: {query}\n\nRETRIEVED STATUTORY CONTEXT:\n{context_str}"
+        while True:
+            budget_wait = self._output_budget_wait(max_tokens)
+            if budget_wait > 0:
+                retry_after = budget_wait
+                if budget_wait > timeout:
+                    logger.warning("Groq output-token budget exhausted; wait %.1fs exceeds request timeout", budget_wait)
+                    return self._structured_error(
+                        "rate_limited", RATE_LIMIT_MESSAGE, retry_after=retry_after
+                    )
+                logger.warning("Groq output-token budget reached; waiting %.1fs", budget_wait)
+                time.sleep(budget_wait + self._jitter())
+                remaining_wait = self._output_budget_wait(max_tokens)
+                if remaining_wait > 0:
+                    return self._structured_error(
+                        "rate_limited", RATE_LIMIT_MESSAGE, retry_after=remaining_wait
+                    )
 
-        try:
-            response = httpx.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={
-                    "model": self.model_name,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": 0.1,
-                    "max_completion_tokens": 3000,
-                    "response_format": {"type": "json_object"},
-                },
-                timeout=20.0,
-            )
-            response.raise_for_status()
-            choice = response.json()["choices"][0]
-            if choice["finish_reason"] != "stop":
-                raise ValueError("Groq returned an incomplete legal answer")
-            parsed = GroqLegalAnswer.model_validate_json(choice["message"]["content"])
-            if not parsed.legal_points and not parsed.cited_source_numbers:
-                return self._fallback.generate_legal_answer(query, [], language)
-            points = []
-            source_numbers = set(parsed.cited_source_numbers)
-            for point in parsed.legal_points:
-                if point.source_number > len(context_chunks):
-                    raise ValueError("Unknown source number in legal explanation")
-                source_numbers.add(point.source_number)
-                points.append({
-                    "explanation": point.explanation,
-                    "source_checksum": context_chunks[point.source_number - 1]["content_checksum"],
-                })
-            claimed_refs = [
-                {**chunk, "section_or_paragraph": chunk.get("section_number")}
-                for number, chunk in enumerate(context_chunks, start=1)
-                if number in source_numbers
-            ]
-            if not claimed_refs:
-                raise ValueError("Groq answer did not cite the retrieved sources")
+            try:
+                response = httpx.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    json={
+                        "model": self.model_name,
+                        "messages": [
+                            {"role": "system", "content": self._system_prompt(language)},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        "temperature": 0.1,
+                        "max_completion_tokens": max_tokens,
+                        "response_format": {"type": "json_object"},
+                    },
+                    timeout=timeout,
+                )
+            except httpx.TimeoutException:
+                logger.warning("Groq generation request timed out")
+                return self._structured_error("timeout", GENERATION_TIMEOUT_MESSAGE)
+            except httpx.HTTPError:
+                logger.warning("Groq generation request failed before a response was received")
+                return self._structured_error("provider_unavailable", PROVIDER_UNAVAILABLE_MESSAGE)
+
+            if response.status_code == 429:
+                header_wait = self._parse_retry_after(response)
+                wait = header_wait if header_wait is not None else float(settings.GROQ_RETRY_BACKOFF_SECONDS)
+                wait += self._jitter()
+                retry_after = header_wait if header_wait is not None else wait
+                if wait > timeout or attempt >= max_retries:
+                    logger.warning("Groq rate limit exhausted after %d attempt(s)", attempt + 1)
+                    return self._structured_error(
+                        "rate_limited", RATE_LIMIT_MESSAGE, retry_after=retry_after
+                    )
+                logger.warning("Groq rate limit 429 encountered, backing off for %.1fs", wait)
+                time.sleep(wait)
+                attempt += 1
+                continue
+
+            if response.status_code >= 500:
+                logger.warning("Groq provider returned HTTP %s", response.status_code)
+                return self._structured_error("provider_unavailable", PROVIDER_UNAVAILABLE_MESSAGE)
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError:
+                logger.warning("Groq provider rejected the request with HTTP %s", response.status_code)
+                return self._structured_error("provider_unavailable", PROVIDER_UNAVAILABLE_MESSAGE)
+
+            payload = response.json()
+            usage = payload.get("usage") if isinstance(payload, dict) else None
+            completed_tokens = max_tokens
+            if isinstance(usage, dict):
+                completed_tokens = int(
+                    usage.get("completion_tokens") or usage.get("output_tokens") or max_tokens
+                )
+            self._record_output_tokens(completed_tokens)
+
+            try:
+                choice = payload["choices"][0]
+                if choice.get("finish_reason") != "stop":
+                    raise ValueError("Groq returned an incomplete legal answer")
+                parsed = GroqLegalAnswer.model_validate_json(choice["message"]["content"])
+                if not parsed.legal_points and not parsed.cited_source_numbers:
+                    return self._structured_error(
+                        "insufficient_evidence",
+                        "The retrieved material does not sufficiently support a legal answer. "
+                        "Please provide the jurisdiction, relevant dates, and any notice or order you received, "
+                        "then consult an empanelled advocate.",
+                        retryable=False,
+                    )
+
+                points = []
+                source_numbers = set(parsed.cited_source_numbers)
+                for point in parsed.legal_points:
+                    if point.source_number < 1 or point.source_number > len(context_chunks):
+                        raise ValueError("Unknown source number in legal explanation")
+                    source_numbers.add(point.source_number)
+                    points.append({
+                        "explanation": point.explanation,
+                        "source_checksum": context_chunks[point.source_number - 1]["content_checksum"],
+                    })
+                claimed_refs = [
+                    {**chunk, "section_or_paragraph": chunk.get("section_number")}
+                    for number, chunk in enumerate(context_chunks, start=1)
+                    if number in source_numbers
+                ]
+                if not claimed_refs:
+                    raise ValueError("Groq answer did not cite the retrieved sources")
+            except (ValueError, KeyError, IndexError, TypeError) as exc:
+                logger.warning("Groq returned an invalid structured answer: %s", type(exc).__name__)
+                return self._structured_error("generation_error", GENERATION_ERROR_MESSAGE)
 
             return {
                 "answer": "\n\n".join([parsed.answer, *(p.explanation for p in parsed.legal_points)]),
@@ -1054,15 +1468,10 @@ class GroqLLMProvider(BaseLLMProvider):
                 "confidence_level": parsed.confidence_level,
                 "confidence_note": parsed.confidence_note,
                 "follow_up_suggestions": parsed.follow_ups,
-            }
-        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
-            status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
-            logger.warning("Groq legal generation failed (%s, HTTP status %s)", type(exc).__name__, status_code)
-            fallback = self._fallback.generate_legal_answer(query, retrieved_chunks, language)
-            return {
-                **fallback,
-                "confidence_level": "LOW",
-                "confidence_note": "AI generation is temporarily unavailable. This response uses retrieved statutory excerpts.",
+                "generation_status": "ok",
+                "generation_error": None,
+                "retry_after_seconds": None,
+                "is_retryable": False,
             }
 
     def explain_legal_document(

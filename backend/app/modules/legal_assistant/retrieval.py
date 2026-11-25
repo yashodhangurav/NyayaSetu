@@ -52,7 +52,8 @@ LEGAL_DOMAIN_TAXONOMY: Dict[str, Dict[str, Any]] = {
             "crime", "criminal", "police", "fir", "bail", "anticipatory bail", "bns", "bnss",
             "bsa", "crpc", "ipc", "undertrial", "cheating", "fraud", "criminal breach of trust",
             "arrest", "custody", "evidence", "electronic evidence", "charge sheet", "cognizable",
-            "non-bailable", "jail", "magistrate"
+            "non-bailable", "jail", "magistrate", "summon", "summons", "court summon", "warrant",
+            "notice of appearance", "bailable warrant"
         ],
         "short_codes": ["BNS_2023", "BNSS_2023", "BSA_2023"],
     },
@@ -84,7 +85,9 @@ LEGAL_DOMAIN_TAXONOMY: Dict[str, Dict[str, Any]] = {
         "keywords": [
             "accident", "motor vehicle", "mact", "claims tribunal", "hit and run", "grievous hurt",
             "road accident", "driver", "vehicular", "insurance claim", "no-fault liability",
-            "compensation"
+            "compensation", "traffic", "challan", "fine", "police fine", "traffic police",
+            "drink and drive", "drunk driving", "alcohol", "breath analyzer", "breath analyser",
+            "helmet", "seatbelt", "driving licence", "speeding", "signal jump"
         ],
         "short_codes": ["MV_ACT_1988"],
     },
@@ -92,9 +95,11 @@ LEGAL_DOMAIN_TAXONOMY: Dict[str, Dict[str, Any]] = {
         "keywords": [
             "property", "sale deed", "rera", "builder", "possession", "flat", "apartment",
             "allottee", "lease", "tenant", "tenancy", "rent", "transfer of property", "limitation",
-            "condonation of delay", "adverse possession", "specific performance", "promoter"
+            "condonation of delay", "adverse possession", "specific performance", "promoter",
+            "plot", "plot owner", "plot ownership", "site owner", "land title", "conveyance",
+            "change of owner", "mutation", "khata transfer"
         ],
-        "short_codes": ["RERA_2016", "TPA_1882", "LIMITATION_1963"],
+        "short_codes": ["RERA_2016", "TPA_1882", "LIMITATION_1963", "KLRA_1964"],
     },
     "LEGAL_AID": {
         "keywords": [
@@ -107,9 +112,9 @@ LEGAL_DOMAIN_TAXONOMY: Dict[str, Dict[str, Any]] = {
         "keywords": [
             "workman", "worker", "retrenchment", "layoff", "gratuity", "superannuation",
             "continuous service", "industrial dispute", "factory", "wages", "termination of employment",
-            "employer", "notice pay"
+            "employer", "notice pay", "posh", "internal committee", "icc", "sexual harassment workplace"
         ],
-        "short_codes": ["IDA_1947", "PGA_1972"],
+        "short_codes": ["IDA_1947", "PGA_1972", "POSH_2013"],
     },
     "INTELLECTUAL_PROPERTY": {
         "keywords": [
@@ -117,6 +122,58 @@ LEGAL_DOMAIN_TAXONOMY: Dict[str, Dict[str, Any]] = {
             "literary work", "musical work", "artistic work", "counterfeit mark", "passing off"
         ],
         "short_codes": ["COPYRIGHT_1957", "TRADEMARKS_1999"],
+    },
+    "KARNATAKA_LAND_AND_REVENUE": {
+        "keywords": [
+            "rtc", "pahani", "khata", "a-khata", "b-khata", "e-khata", "mutation", "phodi", "durasti",
+            "saguvali chit", "hakkupatra", "ptcl", "sc st granted land", "section 95", "conversion",
+            "bhoomi", "kaveri", "kaveri 2.0", "form 9", "form 11", "e-swathu", "bbmp", "kofa",
+            "tahsildar", "assistant commissioner revenue", "village accountant", "rajakaluve"
+        ],
+        "short_codes": ["KLR_1964", "PTCL_1978", "BBMP_2020", "KOFA_1972", "KAR_RENT_1999"],
+    },
+    "HEALTHCARE_AND_MEDICAL": {
+        "keywords": [
+            "doctor", "hospital", "medical negligence", "patient", "kpme", "jacob mathew", "informed consent",
+            "clinical establishment", "mbbs", "hospital bill", "dead body detention", "mtp", "abortion",
+            "mental healthcare", "advance directive"
+        ],
+        "short_codes": ["KPME_2007", "NMC_2019", "MHA_2017", "MTP_1971"],
+    },
+    "TAXATION_DIRECT_INDIRECT": {
+        "keywords": [
+            "income tax", "itr", "capital gains", "tds", "194-ia", "section 54", "section 148",
+            "reassessment", "gst", "cgst", "input tax credit", "property tax", "sas return"
+        ],
+        "short_codes": ["IT_ACT_1961", "CGST_2017"],
+    },
+    "MSME_AND_CORPORATE": {
+        "keywords": [
+            "msme", "samadhaan", "delayed payment", "45 days", "compound interest", "msefc", "buyer default",
+            "companies act", "incorporation", "director", "llp", "arbitration"
+        ],
+        "short_codes": ["MSMED_2006", "COMPANIES_2013", "LLP_2008", "ARB_1996"],
+    },
+    "ADMINISTRATIVE_AND_RTI": {
+        "keywords": [
+            "rti", "right to information", "pio", "public information officer", "first appeal",
+            "30 days rti", "48 hours life liberty", "sakala", "gsc slip", "seva sindhu", "caste certificate"
+        ],
+        "short_codes": ["RTI_2005", "SAKALA_2011"],
+    },
+    "EDUCATION_AND_STUDENT": {
+        "keywords": [
+            "school", "college", "university", "rte", "25 percent quota", "capitation fee", "ragging",
+            "anti ragging", "ugc", "certificates withholding", "marks card withholding"
+        ],
+        "short_codes": ["RTE_2009", "UGC_1956"],
+    },
+    "ENVIRONMENT_AND_POLLUTION": {
+        "keywords": [
+            "pollution", "noise pollution", "loudspeaker", "decibel", "10 pm loudspeaker", "ngt",
+            "national green tribunal", "lake buffer", "solid waste", "tree cutting", "preservation of trees"
+        ],
+        "short_codes": ["EPA_1986", "NGT_2010"],
     },
 }
 

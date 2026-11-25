@@ -172,7 +172,7 @@ Every LLM response is processed through `backend/app/modules/legal_assistant/cit
 
 ### 2.6 Dual-Mode Resilience (Database + Bundled Corpus)
 - **Primary Mode**: PostgreSQL 16 + pgvector storing curated legal sources and embeddings.
-- **Offline Fallback Mode**: When running without an active PostgreSQL instance, `service.py` automatically falls back to `backend/rag/data/processed/canonical_corpus.json` (71 verified canonical chunks), ensuring zero development or operational downtime.
+- **Offline Fallback Mode**: When running without an active PostgreSQL instance, `service.py` automatically falls back to `backend/rag/data/processed/canonical_corpus.json` (128 verified canonical chunks across 161 expanded sources), ensuring zero development or operational downtime.
 
 ---
 

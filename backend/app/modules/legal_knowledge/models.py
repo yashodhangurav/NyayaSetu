@@ -3,7 +3,7 @@
 import uuid
 from typing import Any, List, Optional
 from datetime import date
-from sqlalchemy import Date, ForeignKey, Index, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
@@ -275,4 +275,164 @@ class LegalIngestionJob(Base, TimestampMixin):
     source: Mapped[Optional["LegalSource"]] = relationship(
         "LegalSource",
         back_populates="ingestion_jobs",
+    )
+
+
+class LegalSourceRegistry(Base, TimestampMixin):
+    """Active configuration and operational state for an official legal source."""
+
+    __tablename__ = "legal_source_registry"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
+    )
+    registry_key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    official_domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    base_url: Mapped[str] = mapped_column(Text, nullable=False)
+    source_category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    jurisdiction: Mapped[str] = mapped_column(String(128), nullable=False, default="Union of India", index=True)
+    legal_domains: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=list
+    )
+    document_types: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=list
+    )
+    fetch_strategy: Mapped[str] = mapped_column(String(64), nullable=False, default="STATIC_DOCUMENT")
+    parser_strategy: Mapped[str] = mapped_column(String(64), nullable=False, default="PDF")
+    authority_level: Mapped[str] = mapped_column(String(64), nullable=False, default="OFFICIAL")
+    supported_languages: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=list
+    )
+    update_frequency_hours: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    last_successful_fetch: Mapped[Optional[Any]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_attempted_fetch: Mapped[Optional[Any]] = mapped_column(DateTime(timezone=True), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    verification_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="PENDING", index=True
+    )
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rate_limit_per_minute: Mapped[int] = mapped_column(Integer, nullable=False, default=6)
+    source_config: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=dict
+    )
+
+
+class LegalDocumentVersion(Base, TimestampMixin):
+    """Immutable snapshot of a fetched official legal document."""
+
+    __tablename__ = "legal_document_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
+    )
+    registry_key: Mapped[str] = mapped_column(
+        String(128), ForeignKey("legal_source_registry.registry_key", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    document_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[str] = mapped_column(String(64), nullable=False, default="1.0")
+    content_checksum: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    normalized_text_checksum: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    raw_storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="PENDING_REVIEW", index=True
+    )
+    document_type: Mapped[str] = mapped_column(String(64), nullable=False, default="BARE_ACT")
+    jurisdiction: Mapped[str] = mapped_column(String(128), nullable=False, default="Union of India")
+    authority_level: Mapped[str] = mapped_column(String(64), nullable=False, default="OFFICIAL")
+    publication_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    effective_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    valid_from: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    valid_until: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    legal_source_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("legal_sources.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    metadata_json: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=dict
+    )
+
+    __table_args__ = (
+        UniqueConstraint("document_key", "content_checksum", name="uq_legal_document_version_checksum"),
+    )
+
+
+class LegalSyncJob(Base, TimestampMixin):
+    """Persistent checkpoint and counters for an official-source synchronization run."""
+
+    __tablename__ = "legal_sync_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
+    )
+    source_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False, default="INCREMENTAL")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING", index=True)
+    checkpoint_json: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=dict
+    )
+    documents_discovered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    documents_ingested: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    documents_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    started_at: Mapped[Optional[Any]] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[Optional[Any]] = mapped_column(DateTime(timezone=True), nullable=True)
+    requested_by: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+
+class LegalReviewItem(Base, TimestampMixin):
+    """Ambiguous or changed source content awaiting human legal review."""
+
+    __tablename__ = "legal_review_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
+    )
+    document_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("legal_document_versions.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    source_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    reason: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING", index=True)
+    details_json: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=dict
+    )
+    resolved_by: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    resolved_at: Mapped[Optional[Any]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class LegalRelationship(Base, TimestampMixin):
+    """Knowledge layer connecting acts to sections, old laws to new laws,
+    precedents to interpreted provisions, legal problems to applicable statutes,
+    remedies to competent authorities, and procedures to deadlines and documents."""
+
+    __tablename__ = "legal_relationships"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
+    )
+    source_ref: Mapped[str] = mapped_column(
+        String(128), nullable=False, index=True,
+        comment="Statutory short code, section ref, precedent ID, or legal scenario ID",
+    )
+    target_ref: Mapped[str] = mapped_column(
+        String(128), nullable=False, index=True,
+        comment="Target statute, rule, section, forum, procedure, or document requirement",
+    )
+    relationship_type: Mapped[str] = mapped_column(
+        String(64), nullable=False, index=True,
+        comment="REPLACES | INTERPRETS | GOVERNED_BY_RULE | APPLIES_TO_PROBLEM | REMEDY_AUTHORITY | REQUIRED_DOCUMENT | STATUTORY_DEADLINE | SUBSECTION | EXCEPTION",
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Precise legal description of the relationship and statutory basis",
+    )
+    jurisdiction: Mapped[str] = mapped_column(
+        String(128), nullable=False, default="Union of India", index=True
+    )
+    metadata_json: Mapped[Optional[dict]] = mapped_column(
+        JSONB().with_variant(JSON, "sqlite"), nullable=True, default=dict
     )

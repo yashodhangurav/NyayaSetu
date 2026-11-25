@@ -7,7 +7,7 @@ from typing import List, Optional
 from jwt import InvalidTokenError
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import func, select
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError, OperationalError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -23,6 +23,7 @@ from app.modules.legal_assistant.schemas import (
     LegalSourceCreate,
     LegalSourceResponse,
 )
+from app.modules.legal_assistant.observability import rag_observability
 from app.modules.legal_assistant.service import LegalAssistantService, get_hybrid_engine
 from app.modules.legal_knowledge.ingestion import LegalIngestionService
 from app.modules.legal_knowledge.models import LegalChunk, LegalSource
@@ -49,7 +50,7 @@ async def get_optional_user(
             async with asyncio.timeout(3 if settings.is_development else None):
                 res = await db.execute(select(User).where(User.id == uuid.UUID(user_id_str)))
                 return res.scalar_one_or_none()
-    except (OperationalError, TimeoutError):
+    except (SQLAlchemyError, DBAPIError, OperationalError, TimeoutError, OSError):
         if not settings.is_development:
             raise
         await db.rollback()
@@ -215,6 +216,17 @@ async def admin_seed_corpus(
 ):
     count = await LegalIngestionService.seed_curated_corpus(db=db)
     return {"status": "success", "chunks_seeded": count}
+
+
+@router.get(
+    "/admin/observability",
+    summary="Admin: RAG operational counters (no user or document content)",
+)
+async def admin_rag_observability(
+    limit: int = Query(20, ge=1, le=100),
+    admin: User = Depends(require_roles("ADMIN")),
+):
+    return rag_observability.summary(limit=limit)
 
 
 @router.get(

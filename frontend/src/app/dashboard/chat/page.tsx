@@ -10,6 +10,7 @@ import {
   type AssistantAnswer,
   type ScanExplainResult,
 } from "@/services/dashboard/chat-assistant";
+import { getAssistantFailure } from "@/services/dashboard/chat-error-handling";
 import { EmptyState } from "./components/EmptyState";
 import { ThinkingState } from "./components/ThinkingState";
 import { AssistantAnswerCard } from "./components/AssistantAnswerCard";
@@ -28,7 +29,11 @@ export default function ChatPage() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [failedSend, setFailedSend] = useState<{ query: string; message: string } | null>(null);
+  const [failedSend, setFailedSend] = useState<{
+    query: string;
+    message: string;
+    retryable: boolean;
+  } | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [activeScanResult, setActiveScanResult] = useState<ScanExplainResult | null>(null);
 
@@ -85,19 +90,18 @@ export default function ChatPage() {
       const answer = await getAssistantAnswer(
         query,
         language,
-        AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
+        AbortSignal.any([request.signal, AbortSignal.timeout(60_000)]),
       );
       if (activeRequest.current === request) {
         setTurns((prev) => [...prev, { id: answer.id, role: "assistant", assistantAnswer: answer }]);
       }
     } catch (error) {
       if (activeRequest.current === request) {
-        const timedOut = error instanceof DOMException && error.name === "TimeoutError";
+        const failure = getAssistantFailure(error);
         setFailedSend({
           query,
-          message: timedOut
-            ? "The assistant took too long to respond. Please retry."
-            : "The assistant couldn't respond. Please retry.",
+          message: failure?.message ?? "The assistant couldn't respond. Please retry.",
+          retryable: failure?.retryable ?? true,
         });
       }
     } finally {
@@ -256,9 +260,11 @@ export default function ChatPage() {
             {failedSend && (
               <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border border-[#e2d5c1] bg-[#fffaf2] p-3 text-sm">
                 <p>{failedSend.message}</p>
-                <Button size="sm" variant="secondary" onClick={() => void handleSend(failedSend.query, true)}>
-                  Retry
-                </Button>
+                {failedSend.retryable && (
+                  <Button size="sm" variant="secondary" onClick={() => void handleSend(failedSend.query, true)}>
+                    Retry
+                  </Button>
+                )}
               </div>
             )}
 

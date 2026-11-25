@@ -1,8 +1,17 @@
-"""Database Configuration, Declarative Base, and Session Management using SQLAlchemy 2 & Psycopg 3."""
+"""Database Configuration, Declarative Base, and Session Management using SQLAlchemy 2.
+
+Development defaults to SQLite (`sqlite+aiosqlite`) so the API runs without an
+external database server. Point `DATABASE_URL` at PostgreSQL/Psycopg 3 to use
+PostGIS and pgvector in production.
+"""
 
 import asyncio
+import sys
 import time
 import uuid
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, Optional
@@ -54,15 +63,18 @@ class TimestampMixin:
     )
 
 
-# Asynchronous PostgreSQL Engine configured with Psycopg 3 driver
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DB_ECHO,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
-    pool_timeout=settings.DB_POOL_TIMEOUT,
-    pool_pre_ping=True,
-)
+# Async database engine. SQLite (development default) and PostgreSQL are both supported.
+_engine_kwargs: Dict[str, Any] = {"echo": settings.DB_ECHO}
+if not settings.is_sqlite:
+    # PostgreSQL connection pool tuning (SQLite ignores/does not support these).
+    _engine_kwargs.update(
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_timeout=settings.DB_POOL_TIMEOUT,
+        pool_pre_ping=True,
+    )
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 # Centralized session factory
 AsyncSessionLocal = async_sessionmaker(
@@ -106,13 +118,33 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+async def initialize_database() -> None:
+    """Create the schema when running on SQLite.
+
+    Alembic revisions in this repository target PostgreSQL (PostGIS/pgvector),
+    so a local SQLite database is initialised directly from ORM metadata.
+    PostgreSQL deployments continue to use `alembic upgrade head`.
+    """
+    if not settings.is_sqlite:
+        return
+
+    # Imported lazily so every model is registered on Base.metadata first.
+    from app.core.models import Base as ModelsBase
+
+    async with engine.begin() as conn:
+        await conn.run_sync(ModelsBase.metadata.create_all)
+
+    logger.info(f"SQLite schema ready at {settings.DATABASE_URL}")
+
+
 async def check_db_health() -> Dict[str, Any]:
-    """Execute a comprehensive health check against PostgreSQL, checking connectivity, latency, and extensions."""
+    """Execute a health check against the configured database."""
     start_time = time.perf_counter()
+    database_dialect = engine.dialect.name
     health_status: Dict[str, Any] = {
         "status": "disconnected",
         "latency_ms": None,
-        "dialect": "psycopg3",
+        "dialect": "sqlite" if settings.is_sqlite else "psycopg3",
         "extensions": {},
         "error": None,
     }
@@ -125,18 +157,25 @@ async def check_db_health() -> Dict[str, Any]:
             health_status["status"] = "connected"
             health_status["latency_ms"] = round(latency, 2)
 
-            # 2. Check for required extensions (PostGIS, pgvector, uuid-ossp)
-            ext_query = text(
-                "SELECT extname, extversion FROM pg_extension "
-                "WHERE extname IN ('postgis', 'vector', 'uuid-ossp');"
-            )
-            result = await asyncio.wait_for(session.execute(ext_query), timeout=1.5)
-            ext_map = {row[0]: row[1] for row in result.fetchall()}
-            health_status["extensions"] = {
-                "postgis": ext_map.get("postgis", "not_installed"),
-                "vector": ext_map.get("vector", "not_installed"),
-                "uuid-ossp": ext_map.get("uuid-ossp", "not_installed"),
-            }
+            if database_dialect == "postgresql":
+                # 2. Check for required extensions (PostGIS, pgvector, uuid-ossp)
+                ext_query = text(
+                    "SELECT extname, extversion FROM pg_extension "
+                    "WHERE extname IN ('postgis', 'vector', 'uuid-ossp');"
+                )
+                result = await asyncio.wait_for(session.execute(ext_query), timeout=1.5)
+                ext_map = {row[0]: row[1] for row in result.fetchall()}
+                health_status["extensions"] = {
+                    "postgis": ext_map.get("postgis", "not_installed"),
+                    "vector": ext_map.get("vector", "not_installed"),
+                    "uuid-ossp": ext_map.get("uuid-ossp", "not_installed"),
+                }
+            else:
+                health_status["extensions"] = {
+                    "postgis": "not_applicable",
+                    "vector": "not_applicable",
+                    "uuid-ossp": "not_applicable",
+                }
     except (asyncio.TimeoutError, TimeoutError):
         health_status["status"] = "unreachable"
         health_status["error"] = "Database connection timed out"

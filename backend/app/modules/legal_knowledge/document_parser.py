@@ -8,6 +8,8 @@ from html.parser import HTMLParser
 import io
 import re
 from typing import Optional, Union
+import xml.etree.ElementTree as ET
+import zipfile
 
 
 class _LegalHTMLStripper(HTMLParser):
@@ -64,6 +66,10 @@ class DocumentParser:
                 fmt = "TXT"
             elif filename.lower().endswith(".json"):
                 fmt = "JSON"
+            elif filename.lower().endswith(".xml"):
+                fmt = "XML"
+            elif filename.lower().endswith(".docx"):
+                fmt = "DOCX"
 
         if fmt == "PDF":
             if isinstance(content, str):
@@ -75,8 +81,14 @@ class DocumentParser:
             return cls.extract_from_txt(content)
         elif fmt == "JSON":
             return cls.extract_from_txt(content)
+        elif fmt == "XML":
+            return cls.extract_from_xml(content)
+        elif fmt == "DOCX":
+            return cls.extract_from_docx(content)
         else:
-            raise ValueError(f"Unsupported file format '{file_format}'. Supported formats: PDF, HTML, TXT, JSON.")
+            raise ValueError(
+                f"Unsupported file format '{file_format}'. Supported formats: PDF, HTML, TXT, JSON, XML, DOCX."
+            )
 
     @classmethod
     def extract_from_pdf(cls, content_bytes: bytes) -> str:
@@ -143,6 +155,40 @@ class DocumentParser:
             raise ValueError("Text content cannot be empty.")
 
         return cls.clean_legal_text(text_str)
+
+    @classmethod
+    def extract_from_xml(cls, content: Union[str, bytes]) -> str:
+        """Extract readable text from XML/RSS/Atom documents without executing markup."""
+        if isinstance(content, bytes):
+            content = content.decode("utf-8", errors="replace")
+        if not content.strip():
+            raise ValueError("XML content cannot be empty.")
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError as exc:
+            raise ValueError(f"Malformed XML document: {exc}") from exc
+        pieces = [text.strip() for text in root.itertext() if text and text.strip()]
+        return cls.clean_legal_text("\n".join(pieces))
+
+    @classmethod
+    def extract_from_docx(cls, content: Union[bytes, str]) -> str:
+        """Extract paragraphs from a DOCX package using only the standard library."""
+        if isinstance(content, str):
+            content = content.encode("utf-8")
+        try:
+            with zipfile.ZipFile(io.BytesIO(content)) as archive:
+                xml_bytes = archive.read("word/document.xml")
+        except (zipfile.BadZipFile, KeyError) as exc:
+            raise ValueError("Invalid DOCX document: word/document.xml is missing") from exc
+
+        root = ET.fromstring(xml_bytes)
+        namespace = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+        paragraphs: list[str] = []
+        for paragraph in root.iter(f"{namespace}p"):
+            text = "".join(node.text or "" for node in paragraph.iter(f"{namespace}t"))
+            if text.strip():
+                paragraphs.append(text.strip())
+        return cls.clean_legal_text("\n".join(paragraphs))
 
     @classmethod
     def clean_legal_text(cls, raw_text: str) -> str:

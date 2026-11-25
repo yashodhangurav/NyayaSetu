@@ -157,6 +157,23 @@ SYNONYM_EXPANSIONS: Dict[str, List[str]] = {
     # ── Motor Vehicle & Accidents ──
     "accident": ["Motor Vehicles Act 1988", "Section 166 MACT claim", "Motor Accidents Claims Tribunal", "no fault liability Section 164", "third party insurance"],
     "mact": ["Motor Accidents Claims Tribunal", "Section 166 MV Act", "accident compensation", "limitation 6 months Section 166(3)"],
+    "drink and drive": ["Motor Vehicles Act 1988", "Section 185 MVA", "drunk driving", "breath analyser", "fine 10000", "blood alcohol 30mg", "licence suspension"],
+    "drunk driving": ["Section 185 Motor Vehicles Act", "breath analyser", "fine 10000", "imprisonment six months", "driving licence disqualification"],
+    "traffic": ["Motor Vehicles Act 1988", "Section 194", "traffic police fine", "challan", "Section 200 compounding", "helmet fine", "seatbelt penalty"],
+    "challan": ["traffic challan", "Section 200 Motor Vehicles Act", "e-challan parivahan", "virtual court", "compounding fee receipt"],
+    "traffic police": ["Motor Vehicles Act", "Section 194", "traffic challan", "Section 200 compounding", "spot fine receipt"],
+    "traffic fine": ["Motor Vehicles Act Section 194", "Section 200 compounding", "official printed receipt", "virtual court challan"],
+
+    # ── Summons, Notices & Process ──
+    "summon": ["court summons", "Section 63 BNSS", "Section 64 BNSS", "notice of appearance Section 35", "duplicate copy signed", "witness or accused", "warrant prevention"],
+    "summons": ["court summons", "Section 63 BNSS", "Section 64 BNSS", "Order V CPC", "notice of appearance", "30 days written statement", "warrant"],
+    "legal summon": ["court summons", "Section 63 BNSS", "Order V CPC", "written statement 30 days", "advocate representation", "warrant"],
+    "warrant": ["bailable warrant", "non bailable warrant", "Section 72 BNSS", "magistrate court", "appearance"],
+
+    # ── Plot & Land Conveyancing ──
+    "plot": ["plot ownership", "Section 128 Karnataka Land Revenue Act", "Section 54 Transfer of Property Act", "mutation", "khata transfer", "sale deed"],
+    "plot owner": ["change of plot owner", "Section 128 Karnataka Land Revenue Act", "mutation Form 12", "Section 54 TPA", "e-Khata transfer", "sale deed registration"],
+    "plot ownership": ["change of plot owner", "Section 128 KLRA", "Section 129 mutation", "Section 54 TPA", "registered sale deed", "e-Aasthi"],
 
     # ── Civil Procedure & Legal Aid ──
     "limitation": ["Limitation Act 1963", "Article 54 specific performance 3 years", "Section 5 condonation of delay", "statutory deadline"],
@@ -350,6 +367,32 @@ OUT_OF_SCOPE_PATTERNS = [
     r"(?i)(मौसम|क्रिकेट|रेसिपी|केक|सिनेमा|पर्यटन|सॉफ्टवेयर)",
 ]
 
+# Dynamically enrich VERNACULAR_MAPPINGS from MULTILINGUAL_GLOSSARY.json
+import json
+import os
+
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_GLOSSARY_FILE = os.path.join(_BASE_DIR, "docs", "MULTILINGUAL_GLOSSARY.json")
+if os.path.exists(_GLOSSARY_FILE):
+    try:
+        with open(_GLOSSARY_FILE, "r", encoding="utf-8") as _gf:
+            _glossary_data = json.load(_gf)
+            for _k, _entry in _glossary_data.items():
+                _statute = _entry.get("canonical_statute", "")
+                _eng = _entry.get("english", "")
+                _defn = _entry.get("definition", "")
+                _exp = f"{_eng} {_statute}".strip()
+                if _entry.get("kannada"):
+                    VERNACULAR_MAPPINGS[_entry["kannada"]] = _exp
+                if _entry.get("hindi"):
+                    VERNACULAR_MAPPINGS[_entry["hindi"]] = _exp
+                for _trans in _entry.get("transliterations", []):
+                    VERNACULAR_MAPPINGS[_trans.lower()] = _exp
+                for _mis in _entry.get("common_misspellings", []):
+                    VERNACULAR_MAPPINGS[_mis.lower()] = _exp
+    except Exception:
+        pass
+
 
 class LegalQueryRewriter:
     """Normalizes citizen language, detects dialects, expands legacy statutes, and enriches search terms."""
@@ -446,9 +489,10 @@ class LegalQueryRewriter:
         for keyword, synonyms in SYNONYM_EXPANSIONS.items():
             if keyword in lower:
                 expanded_terms.extend(synonyms[:4])
-                if keyword in ["khata", "pahani", "rtc", "mutation", "phodi", "patta", "conversion", "ptcl"]:
+                if keyword in ["khata", "pahani", "rtc", "mutation", "phodi", "patta", "conversion", "ptcl", "plot", "plot owner", "plot ownership"]:
                     domain_tags.add("LAND_REVENUE")
-                elif keyword in ["sale deed", "gift deed", "partition", "ancestral", "easement", "encumbrance"]:
+                    domain_tags.add("PROPERTY_LAW")
+                elif keyword in ["sale deed", "gift deed", "partition", "ancestral", "easement", "encumbrance", "ownership"]:
                     domain_tags.add("PROPERTY_LAW")
                 elif keyword in ["deposit", "landlord", "tenant", "rent", "eviction"]:
                     domain_tags.add("TENANCY")
@@ -458,13 +502,16 @@ class LegalQueryRewriter:
                     domain_tags.add("BANKING_FINANCE")
                 elif keyword in ["arrest", "police", "fir", "bail", "cheating", "assault"]:
                     domain_tags.add("CRIMINAL_LAW")
+                elif keyword in ["summon", "summons", "legal summon", "warrant"]:
+                    domain_tags.add("CRIMINAL_PROCEDURE")
+                    domain_tags.add("CIVIL_PROCEDURE")
                 elif keyword in ["divorce", "maintenance", "child custody", "domestic violence"]:
                     domain_tags.add("FAMILY_LAW")
                 elif keyword in ["consumer", "deficiency", "e-daakhil"]:
                     domain_tags.add("CONSUMER_PROTECTION")
                 elif keyword in ["salary", "termination", "gratuity", "posh"]:
                     domain_tags.add("LABOUR_EMPLOYMENT")
-                elif keyword in ["accident", "mact"]:
+                elif keyword in ["accident", "mact", "drink and drive", "drunk driving", "traffic", "challan", "traffic police", "traffic fine"]:
                     domain_tags.add("MOTOR_VEHICLE_LAW")
                 elif keyword in ["cybercrime", "otp fraud"]:
                     domain_tags.add("CYBERCRIME")
