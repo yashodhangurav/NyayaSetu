@@ -1152,10 +1152,10 @@ class GroqLegalAnswer(BaseModel):
     decision_badge: DecisionBadge
     next_steps: List[str]
     deadline: Optional[DeadlineInfo] = None
-    cited_source_numbers: List[int]
-    confidence_level: Literal["HIGH", "MEDIUM", "LOW"]
+    cited_source_numbers: List[int] = Field(default_factory=list)
+    confidence_level: Literal["HIGH", "MEDIUM", "LOW"] = "MEDIUM"
     confidence_note: Optional[str] = None
-    follow_ups: List[str]
+    follow_ups: List[str] = Field(default_factory=list)
 
     @field_validator("decision_badge", mode="before")
     @classmethod
@@ -1165,6 +1165,14 @@ class GroqLegalAnswer(BaseModel):
             for badge in get_args(DecisionBadge):
                 if label == badge.lower().replace("-", "").replace(" ", ""):
                     return badge
+            # Groq returned an unrecognised badge — map common variants
+            if any(w in label for w in ("urgent", "immediate", "critical", "emergency")):
+                return "Urgent"
+            if any(w in label for w in ("time", "deadline", "limitation")):
+                return "Time-sensitive"
+            if any(w in label for w in ("self", "help", "diy", "alone")):
+                return "Self-help first"
+            return "Advocate advised"
         return value
 
 
@@ -1424,7 +1432,16 @@ class GroqLLMProvider(BaseLLMProvider):
                 choice = payload["choices"][0]
                 if choice.get("finish_reason") != "stop":
                     raise ValueError("Groq returned an incomplete legal answer")
-                parsed = GroqLegalAnswer.model_validate_json(choice["message"]["content"])
+                raw_content = choice["message"]["content"]
+                try:
+                    parsed = GroqLegalAnswer.model_validate_json(raw_content)
+                except Exception as parse_exc:
+                    logger.warning(
+                        "Groq parse failure (%s). Raw content (first 600 chars): %s",
+                        type(parse_exc).__name__,
+                        raw_content[:600],
+                    )
+                    raise
                 if not parsed.legal_points and not parsed.cited_source_numbers:
                     return self._structured_error(
                         "insufficient_evidence",
@@ -1438,7 +1455,12 @@ class GroqLLMProvider(BaseLLMProvider):
                 source_numbers = set(parsed.cited_source_numbers)
                 for point in parsed.legal_points:
                     if point.source_number < 1 or point.source_number > len(context_chunks):
-                        raise ValueError("Unknown source number in legal explanation")
+                        # Out-of-range source reference — skip rather than crash
+                        logger.warning(
+                            "Groq cited out-of-range source %d (max %d); skipping point",
+                            point.source_number, len(context_chunks),
+                        )
+                        continue
                     source_numbers.add(point.source_number)
                     points.append({
                         "explanation": point.explanation,
@@ -1449,8 +1471,12 @@ class GroqLLMProvider(BaseLLMProvider):
                     for number, chunk in enumerate(context_chunks, start=1)
                     if number in source_numbers
                 ]
-                if not claimed_refs:
-                    raise ValueError("Groq answer did not cite the retrieved sources")
+                # If Groq produced a valid answer but cited no recognised sources,
+                # still return the answer — it may cite sources by number that were
+                # out-of-range (handled above) or omitted source numbers entirely.
+                # Only hard-fail when there are truly no legal_points at all.
+                if not claimed_refs and not parsed.legal_points:
+                    raise ValueError("Groq answer contained no legal points and no source citations")
             except (ValueError, KeyError, IndexError, TypeError) as exc:
                 logger.warning("Groq returned an invalid structured answer: %s", type(exc).__name__)
                 return self._structured_error("generation_error", GENERATION_ERROR_MESSAGE)

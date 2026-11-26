@@ -99,7 +99,7 @@ class LegalAssistantService:
                     top_k=payload.max_sources,
                 )
             )
-            if search_res.get("confidence_level") not in ["LOW_CONFIDENCE", "NO_MATCH"]:
+            if search_res.get("results"):
                 for c in search_res.get("results", []):
                     retrieved_chunks.append({
                         "source_title": c.get("act", "Indian Statute"),
@@ -123,6 +123,34 @@ class LegalAssistantService:
             retrieved_chunks=retrieved_chunks,
             language=detected_lang,
         )
+
+        generation_status = str(llm_output.get("generation_status") or "ok")
+        generation_error = llm_output.get("generation_error")
+        retry_after_seconds = llm_output.get("retry_after_seconds")
+        is_retryable = bool(llm_output.get("is_retryable", False))
+        provider_name = getattr(llm, "provider_name", llm.__class__.__name__)
+
+        # Provider-transport failures are returned verbatim.
+        # Do not duplicate the error string into confidence_note.
+        if generation_status in {"rate_limited", "timeout", "provider_unavailable", "generation_error"}:
+            safe_answer = str(llm_output.get("answer") or generation_error or generation_status)
+            return LegalAskResponse(
+                query=payload.query,
+                detected_language=detected_lang,
+                answer=safe_answer,
+                decision_badge="Advocate advised",
+                sources_found=False,
+                confidence_level="LOW",
+                confidence_note=None,
+                follow_up_suggestions=[],
+                retrieved_chunks_count=len(retrieved_chunks),
+                generation_status=generation_status,
+                generation_error=safe_answer,
+                retry_after_seconds=retry_after_seconds,
+                is_retryable=is_retryable,
+                provider_name=provider_name,
+                assessed_at=datetime.now(timezone.utc),
+            )
 
         # 5. Validate citations strictly against retrieved context
         raw_claimed_refs = llm_output.get("cited_references", [])
@@ -181,6 +209,11 @@ class LegalAssistantService:
                 await db.rollback()
 
         next_steps = llm_output.get("next_steps") or llm_output.get("suggested_next_steps") or []
+        follow_ups = llm_output.get("follow_up_suggestions") or [
+            "What specific documents should I prepare for this matter?",
+            "What is the statutory limitation deadline for taking legal action?",
+            "Can an empanelled advocate assist in drafting a response or petition?",
+        ]
 
         return LegalAskResponse(
             query=payload.query,
@@ -197,7 +230,12 @@ class LegalAssistantService:
             deadline=deadline_obj,
             confidence_level=llm_output.get("confidence_level", "HIGH") if sources_found else "LOW",
             confidence_note=llm_output.get("confidence_note"),
-            follow_up_suggestions=llm_output.get("follow_up_suggestions", []),
+            follow_up_suggestions=follow_ups,
             retrieved_chunks_count=len(retrieved_chunks),
+            generation_status=generation_status,
+            generation_error=generation_error,
+            retry_after_seconds=retry_after_seconds,
+            is_retryable=is_retryable,
+            provider_name=provider_name,
             assessed_at=datetime.now(timezone.utc),
         )
